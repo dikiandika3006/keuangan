@@ -1,0 +1,7 @@
+# Untuk hosting yang document root-nya folder project (bukan /public):
+# semua request diarahkan ke folder public, sehingga .env, database, dll tidak bisa diakses dari web.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^public/ - [L]
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
