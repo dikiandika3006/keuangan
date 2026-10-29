@@ -27,15 +27,17 @@ export function StatCard({
     sub,
     icon: Icon,
     tone = 'default',
+    className,
 }: {
     label: string;
     value: ReactNode;
     sub?: ReactNode;
     icon?: LucideIcon;
     tone?: 'default' | 'positive' | 'negative';
+    className?: string;
 }) {
     return (
-        <div className="bg-card min-w-0 rounded-xl border p-3 sm:p-4">
+        <div className={cn('bg-card min-w-0 rounded-xl border p-3 sm:p-4', className)}>
             <div className="text-muted-foreground flex items-center justify-between text-xs font-medium sm:text-sm">
                 <span>{label}</span>
                 {Icon && <Icon className="size-4" />}

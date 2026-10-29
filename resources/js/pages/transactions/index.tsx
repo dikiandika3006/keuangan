@@ -101,10 +101,11 @@ export default function Transactions({ transactions, totals, filters, accounts, 
                     </Button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     <StatCard label="Pemasukan" value={rupiah(totals.income)} tone="positive" />
                     <StatCard label="Pengeluaran" value={rupiah(totals.expense)} tone="negative" />
                     <StatCard
+                        className="col-span-2 sm:col-span-1"
                         label="Selisih"
                         value={rupiah(totals.income - totals.expense)}
                         tone={totals.income - totals.expense < 0 ? 'negative' : 'default'}
