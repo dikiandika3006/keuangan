@@ -1,4 +1,5 @@
 import { AccountOptions } from '@/components/finance/account-select';
+import { AttachmentPicker } from '@/components/finance/attachment-picker';
 import { MoneyInput } from '@/components/finance/money-input';
 import { Field, FormDialog } from '@/components/finance/ui';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,8 @@ type FormData = {
     amount: number | '';
     date: string;
     note: string;
+    attachment: File | null;
+    remove_attachment: boolean;
 };
 
 export function TransactionForm({
@@ -51,6 +54,8 @@ export function TransactionForm({
         amount: '',
         date: today(),
         note: '',
+        attachment: null,
+        remove_attachment: false,
     });
 
     useEffect(() => {
@@ -65,6 +70,8 @@ export function TransactionForm({
                 amount: transaction.amount,
                 date: transaction.date,
                 note: transaction.note ?? '',
+                attachment: null,
+                remove_attachment: false,
             });
         } else {
             form.setData({
@@ -75,14 +82,18 @@ export function TransactionForm({
                 amount: '',
                 date: today(),
                 note: '',
+                attachment: null,
+                remove_attachment: false,
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, transaction]);
 
     const submit = () => {
-        const options = { preserveScroll: true, onSuccess: () => onOpenChange(false) };
-        if (transaction) form.put(route('transactions.update', transaction.id), options);
+        // File hanya bisa dikirim lewat POST multipart; ubah data memakai method spoofing PUT
+        const options = { preserveScroll: true, forceFormData: true, onSuccess: () => onOpenChange(false) };
+        form.transform((d) => ({ ...d, remove_attachment: d.remove_attachment ? 1 : 0, ...(transaction ? { _method: 'put' } : {}) }));
+        if (transaction) form.post(route('transactions.update', transaction.id), options);
         else form.post(route('transactions.store'), options);
     };
 
@@ -177,6 +188,16 @@ export function TransactionForm({
                             <Input id="note" value={data.note} onChange={(e) => setData('note', e.target.value)} placeholder="Opsional" />
                         </Field>
                     </div>
+
+                    <AttachmentPicker
+                        file={data.attachment}
+                        onFileChange={(f) => setData('attachment', f)}
+                        existing={transaction?.attachment_url ? { url: transaction.attachment_url, name: transaction.attachment_name ?? null } : null}
+                        removed={data.remove_attachment}
+                        onRemovedChange={(r) => setData('remove_attachment', r)}
+                        error={errors.attachment}
+                    />
+                    {form.progress && <progress value={form.progress.percentage} max={100} className="h-1 w-full" />}
                 </>
             )}
         </FormDialog>

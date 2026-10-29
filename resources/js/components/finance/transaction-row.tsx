@@ -1,7 +1,7 @@
 import { formatDate, rupiah } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { type Transaction } from '@/types/finance';
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, Paperclip } from 'lucide-react';
 import { ReactNode } from 'react';
 
 export function TransactionRow({ tx, actions, onClick }: { tx: Transaction; actions?: ReactNode; onClick?: () => void }) {
@@ -17,6 +17,19 @@ export function TransactionRow({ tx, actions, onClick }: { tx: Transaction; acti
             <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 text-sm font-medium">
                     <span className="truncate">{title}</span>
+                    {tx.attachment_url && (
+                        <a
+                            href={tx.attachment_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-muted-foreground hover:text-foreground shrink-0"
+                            title="Lihat bukti"
+                            aria-label="Lihat bukti"
+                        >
+                            <Paperclip className="size-3.5" />
+                        </a>
+                    )}
                     {tx.source === 'reconcile' && (
                         <span className="bg-muted text-muted-foreground shrink-0 rounded px-1.5 py-0.5 text-[10px] font-normal">rekonsiliasi</span>
                     )}

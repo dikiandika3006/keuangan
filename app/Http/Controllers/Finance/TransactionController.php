@@ -7,7 +7,9 @@ use App\Models\Transaction;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -46,7 +48,8 @@ class TransactionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $request->user()->transactions()->create($this->validated($request));
+        $transaction = $request->user()->transactions()->create($this->validated($request));
+        $this->syncAttachment($request, $transaction);
 
         return back()->with('success', 'Transaksi disimpan.');
     }
@@ -55,8 +58,31 @@ class TransactionController extends Controller
     {
         $this->ensureOwner($transaction);
         $transaction->update($this->validated($request, $transaction));
+        $this->syncAttachment($request, $transaction);
 
         return back()->with('success', 'Transaksi diperbarui.');
+    }
+
+    /** Tampilkan bukti transaksi (hanya pemiliknya). */
+    public function attachment(Transaction $transaction): StreamedResponse
+    {
+        $this->ensureOwner($transaction);
+        abort_unless($transaction->attachment_path && Storage::disk('local')->exists($transaction->attachment_path), 404);
+
+        return Storage::disk('local')->response(
+            $transaction->attachment_path,
+            $transaction->attachment_name,
+            ['Cache-Control' => 'private, max-age=86400'],
+        );
+    }
+
+    private function syncAttachment(Request $request, Transaction $transaction): void
+    {
+        if ($request->hasFile('attachment')) {
+            $transaction->attachFile($request->file('attachment'));
+        } elseif ($request->boolean('remove_attachment')) {
+            $transaction->deleteAttachment();
+        }
     }
 
     public function destroy(Transaction $transaction): RedirectResponse
@@ -83,7 +109,11 @@ class TransactionController extends Controller
             'amount' => ['required', 'integer', 'min:1'],
             'date' => ['required', 'date'],
             'note' => ['nullable', 'string', 'max:255'],
+            // Bukti opsional: foto kamera / gambar / PDF, maks 10 MB
+            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,heic,heif,pdf', 'max:10240'],
+            'remove_attachment' => ['nullable', 'boolean'],
         ]);
+        unset($data['attachment'], $data['remove_attachment']);
 
         if ($data['type'] === 'transfer') {
             $data['category_id'] = null;

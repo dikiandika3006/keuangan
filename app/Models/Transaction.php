@@ -2,16 +2,57 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 class Transaction extends Model
 {
-    protected $fillable = ['account_id', 'to_account_id', 'category_id', 'type', 'amount', 'date', 'note', 'source', 'debt_installment_id', 'receivable_schedule_id', 'asset_id', 'recurring_item_id'];
+    protected $fillable = [
+        'account_id', 'to_account_id', 'category_id', 'type', 'amount', 'date', 'note', 'source',
+        'debt_installment_id', 'receivable_schedule_id', 'asset_id', 'recurring_item_id',
+        'attachment_path', 'attachment_name', 'attachment_mime', 'attachment_size',
+    ];
+
+    // Lokasi file tidak dikirim ke browser; bukti dibuka lewat route yang mengecek pemilik
+    protected $hidden = ['attachment_path'];
+
+    protected $appends = ['attachment_url'];
 
     protected function casts(): array
     {
-        return ['amount' => 'integer', 'date' => 'date:Y-m-d'];
+        return ['amount' => 'integer', 'date' => 'date:Y-m-d', 'attachment_size' => 'integer'];
+    }
+
+    protected function attachmentUrl(): Attribute
+    {
+        return Attribute::get(fn () => $this->attributes['attachment_path'] ?? null
+            ? route('transactions.attachment', $this->id)
+            : null);
+    }
+
+    /** Simpan bukti baru (menggantikan yang lama) di disk privat. */
+    public function attachFile(UploadedFile $file): void
+    {
+        $this->deleteAttachment();
+        $path = $file->store("attachments/{$this->user_id}", 'local');
+
+        $this->forceFill([
+            'attachment_path' => $path,
+            'attachment_name' => mb_substr($file->getClientOriginalName(), 0, 255),
+            'attachment_mime' => $file->getMimeType(),
+            'attachment_size' => $file->getSize(),
+        ])->save();
+    }
+
+    public function deleteAttachment(): void
+    {
+        if ($this->attachment_path) {
+            Storage::disk('local')->delete($this->attachment_path);
+            $this->forceFill(['attachment_path' => null, 'attachment_name' => null, 'attachment_mime' => null, 'attachment_size' => null])->save();
+        }
     }
 
     protected static function booted(): void
@@ -25,6 +66,12 @@ class Transaction extends Model
         };
         static::saved($sync);
         static::deleted($sync);
+
+        static::deleted(function (Transaction $tx) {
+            if ($tx->attachment_path) {
+                Storage::disk('local')->delete($tx->attachment_path);
+            }
+        });
     }
 
     public function user(): BelongsTo
