@@ -3,14 +3,15 @@
 use App\Http\Controllers\Finance\AccountController;
 use App\Http\Controllers\Finance\AssetController;
 use App\Http\Controllers\Finance\BudgetController;
+use App\Http\Controllers\Finance\CalendarController;
 use App\Http\Controllers\Finance\DashboardController;
 use App\Http\Controllers\Finance\DebtController;
 use App\Http\Controllers\Finance\GoalController;
 use App\Http\Controllers\Finance\MonthlyBillController;
 use App\Http\Controllers\Finance\PlanController;
 use App\Http\Controllers\Finance\ProjectionController;
-use App\Http\Controllers\Finance\ReceivableController;
 use App\Http\Controllers\Finance\RecapController;
+use App\Http\Controllers\Finance\ReceivableController;
 use App\Http\Controllers\Finance\SetupController;
 use App\Http\Controllers\Finance\TransactionController;
 use Illuminate\Support\Facades\Artisan;
@@ -22,6 +23,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::resource('accounts', AccountController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('transactions/{transaction}/attachment', [TransactionController::class, 'attachment'])->name('transactions.attachment');
     Route::resource('transactions', TransactionController::class)->only(['index', 'store', 'update', 'destroy']);
 
     Route::get('budgets', [BudgetController::class, 'index'])->name('budgets.index');
@@ -61,6 +63,7 @@ Route::middleware(['auth'])->group(function () {
     })->name('backup.run');
 
     Route::get('recap', RecapController::class)->name('recap.index');
+    Route::get('calendar', CalendarController::class)->name('calendar.index');
     Route::get('monthly', [MonthlyBillController::class, 'index'])->name('monthly.index');
     Route::post('monthly/{recurringItem}/pay', [MonthlyBillController::class, 'pay'])->name('monthly.pay');
     Route::post('monthly/{recurringItem}/renew', [MonthlyBillController::class, 'renew'])->name('monthly.renew');

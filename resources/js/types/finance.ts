@@ -33,6 +33,8 @@ export interface Transaction {
     date: string;
     note: string | null;
     source?: 'manual' | 'reconcile';
+    attachment_url?: string | null;
+    attachment_name?: string | null;
     account?: { id: number; name: string; color?: string };
     to_account?: { id: number; name: string } | null;
     category?: { id: number; name: string; color: string; system_key?: string | null } | null;
@@ -203,7 +205,7 @@ export interface EmploymentStatus {
 }
 
 export interface AgendaItem {
-    kind: 'debt' | 'receivable';
+    kind: 'debt' | 'bill' | 'receivable';
     id: number;
     title: string;
     amount: number;

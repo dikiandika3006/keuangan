@@ -14,7 +14,7 @@ class AlertService
 {
     public function __construct(private User $user) {}
 
-    /** Cicilan & penerimaan piutang yang belum beres, dari yang terlambat sampai 7 hari ke depan. */
+    /** Cicilan, biaya tetap & penerimaan piutang yang belum beres, dari yang terlambat sampai 7 hari ke depan. */
     public function agenda(int $days = 7): array
     {
         $until = CarbonImmutable::today()->addDays($days)->toDateString();
@@ -66,6 +66,33 @@ class AlertService
                 'status' => $status,
                 'url' => route('receivables.index'),
             ];
+        }
+
+        // Biaya tetap & isi dompet (punya tanggal bayar) bulan ini dan bulan depan yang belum lunas
+        $bills = new BillService($this->user);
+        $thisMonth = CarbonImmutable::today()->startOfMonth();
+        foreach ([$thisMonth, $thisMonth->addMonth()] as $m) {
+            if ($m->toDateString() > $until) {
+                continue;
+            }
+            foreach ($bills->bills($m->format('Y-m')) as $b) {
+                if ($b['source'] === 'debt' || $b['due_day'] === null || $b['paid'] >= $b['amount']) {
+                    continue;
+                }
+                $due = $m->day(min($b['due_day'], $m->daysInMonth))->toDateString();
+                if ($due > $until) {
+                    continue;
+                }
+                $items[] = [
+                    'kind' => 'bill',
+                    'id' => $b['id'],
+                    'title' => $b['name'],
+                    'amount' => $b['amount'] - $b['paid'],
+                    'due_date' => $due,
+                    'status' => BillService::status($b['paid'], $b['amount'], $due),
+                    'url' => route('monthly.index', ['month' => $m->format('Y-m')]),
+                ];
+            }
         }
 
         usort($items, fn ($a, $b) => strcmp($a['due_date'], $b['due_date']));

@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
-use App\Models\DebtInstallment;
 use App\Models\RecurringItem;
+use App\Services\BillService;
 use App\Services\FinanceService;
 use App\Services\ProjectionService;
 use Carbon\CarbonImmutable;
@@ -34,70 +34,13 @@ class MonthlyBillController extends Controller
     {
         $user = $request->user();
         $month = preg_match('/^\d{4}-\d{2}$/', (string) $request->query('month')) ? $request->query('month') : now()->format('Y-m');
-        $start = CarbonImmutable::createFromFormat('Y-m-d', $month.'-01')->startOfDay();
-        $end = $start->endOfMonth();
-
-        $items = $user->recurringItems()->with(['category:id,name,color', 'account:id,name', 'toAccount:id,name,color'])->orderBy('id')->get();
-        // Biaya tetap + isi Dompet Tujuan (type transfer) yang berlaku di bulan ini
-        $expenses = $items->whereIn('type', ['expense', 'transfer'])->filter(fn (RecurringItem $i) => $i->activeIn($month))->values();
-
-        $payments = $user->transactions()
-            ->whereIn('recurring_item_id', $expenses->pluck('id'))
-            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
-            ->with('account:id,name')
-            ->orderBy('date')
-            ->get()
-            ->groupBy('recurring_item_id');
-
-        $bills = $expenses->map(fn (RecurringItem $i) => [
-            'source' => $i->type === 'transfer' ? 'pocket' : 'recurring',
-            'id' => $i->id,
-            'name' => $i->name,
-            'amount' => $i->amount,
-            'due_day' => $i->due_day,
-            'category' => $i->type === 'transfer' && $i->toAccount
-                ? ['id' => null, 'name' => "Dompet {$i->toAccount->name}", 'color' => $i->toAccount->color]
-                : $i->category,
-            'from_account_id' => $i->account_id,
-            'to_account' => $i->toAccount?->name,
-            'to_account_id' => $i->to_account_id,
-            'paid' => (int) ($payments[$i->id] ?? collect())->sum('amount'),
-            'payments' => ($payments[$i->id] ?? collect())->map(fn ($t) => [
-                'id' => $t->id,
-                'date' => $t->date->toDateString(),
-                'amount' => $t->amount,
-                'account' => $t->account?->name,
-            ])->values(),
-        ]);
-
-        // Cicilan utang berjadwal (mobil, rumah, dll) di bulan ini ikut jadi biaya tetap; bayar → tandai cicilan lunas
-        $installments = DebtInstallment::query()
-            ->whereIn('debt_id', $user->debts()->select('id'))
-            ->where('period', $start->toDateString())
-            ->with(['debt:id,name,kind', 'transactions.account:id,name'])
-            ->get();
-        $debtCategory = Category::system($user, 'debt_installment')->only(['id', 'name', 'color']);
-
-        $bills = $bills->concat($installments->map(fn (DebtInstallment $i) => [
-            'source' => 'debt',
-            'id' => $i->id,
-            'debt_id' => $i->debt_id,
-            'name' => $i->debt->name,
-            'amount' => $i->amount,
-            'due_day' => $i->due_date->day,
-            'category' => $debtCategory,
-            'paid' => $i->paid_at ? max($i->amount, (int) $i->transactions->sum('amount')) : (int) $i->transactions->sum('amount'),
-            'payments' => $i->transactions->sortBy('date')->map(fn ($t) => [
-                'id' => $t->id,
-                'date' => $t->date->toDateString(),
-                'amount' => $t->amount,
-                'account' => $t->account?->name,
-            ])->values(),
-        ]))->sortBy(fn ($b) => $b['due_day'] ?? 32)->values();
+        $service = new BillService($user);
+        $items = $service->recurringItems();
+        $bills = $service->bills($month, $items);
 
         // Baris dari skenario aktif untuk bulan yang sama (read-only). Cicilan yang sudah tampil
         // sebagai tagihan dari menu Utang tidak diulang agar tidak terhitung dua kali.
-        $shownKinds = $installments->pluck('debt.kind')->unique();
+        $shownKinds = $bills->where('source', 'debt')->pluck('kind')->unique();
         $scenarioLines = [];
         ProjectionService::ensureScenarios($user);
         $projection = new ProjectionService($user, new FinanceService($user));

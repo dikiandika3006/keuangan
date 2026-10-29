@@ -3,7 +3,21 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { ArrowLeftRight, CalendarCheck, ChartPie, CreditCard, Gem, HandCoins, LayoutGrid, LineChart, PiggyBank, Target, TrendingUp, Wallet } from 'lucide-react';
+import {
+    ArrowLeftRight,
+    CalendarCheck,
+    CalendarDays,
+    ChartPie,
+    CreditCard,
+    Gem,
+    HandCoins,
+    LayoutGrid,
+    LineChart,
+    PiggyBank,
+    Target,
+    TrendingUp,
+    Wallet,
+} from 'lucide-react';
 import AppLogo from './app-logo';
 
 export const mainNavItems: NavItem[] = [
@@ -11,6 +25,7 @@ export const mainNavItems: NavItem[] = [
     { title: 'Transaksi', url: '/transactions', icon: ArrowLeftRight },
     { title: 'Rekap Bulanan', url: '/recap', icon: ChartPie },
     { title: 'Biaya Bulanan', url: '/monthly', icon: CalendarCheck },
+    { title: 'Kalender', url: '/calendar', icon: CalendarDays },
     { title: 'Rekening', url: '/accounts', icon: Wallet },
     { title: 'Utang & Cicilan', url: '/debts', icon: CreditCard },
     { title: 'Piutang', url: '/receivables', icon: HandCoins },

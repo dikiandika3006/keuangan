@@ -263,10 +263,10 @@ export default function Dashboard(props: Props) {
                                                 <div
                                                     className={cn(
                                                         'flex size-8 shrink-0 items-center justify-center rounded-full',
-                                                        item.kind === 'debt' ? 'bg-red-500/10 text-red-600' : 'bg-emerald-500/10 text-emerald-600',
+                                                        item.kind !== 'receivable' ? 'bg-red-500/10 text-red-600' : 'bg-emerald-500/10 text-emerald-600',
                                                     )}
                                                 >
-                                                    {item.kind === 'debt' ? (
+                                                    {item.kind !== 'receivable' ? (
                                                         <ArrowUpRight className="size-4" />
                                                     ) : (
                                                         <ArrowDownRight className="size-4" />
