@@ -50,6 +50,7 @@ class FinanceService
 
         $rows = $this->user->transactions()
             ->whereIn('type', ['income', 'expense'])
+            ->ownMoney()
             ->where('date', '>=', $start->toDateString())
             ->selectRaw("$monthExpr as month, type, SUM(amount) as total")
             ->groupBy('month', 'type')
@@ -110,6 +111,40 @@ class FinanceService
     }
 
     /**
+     * Saldo tiap titipan (kategori bertipe titipan): masuk − keluar sampai tanggal tertentu.
+     * Saldo positif = uang orang lain yang masih ada di rekening kita.
+     */
+    public function heldFunds(?string $asOf = null): Collection
+    {
+        $categories = $this->user->categories()->where('type', Category::TITIPAN)->orderBy('name')->get();
+        if ($categories->isEmpty()) {
+            return collect();
+        }
+
+        $totals = $this->user->transactions()
+            ->whereIn('category_id', $categories->pluck('id'))
+            ->where('date', '<=', $asOf ?? now()->toDateString())
+            ->selectRaw('category_id, type, SUM(amount) as total, COUNT(*) as count, MAX(date) as last_date')
+            ->groupBy('category_id', 'type')
+            ->get();
+
+        return $categories->map(function (Category $c) use ($totals) {
+            $rows = $totals->where('category_id', $c->id);
+            $in = (int) $rows->firstWhere('type', 'income')?->total;
+            $out = (int) $rows->firstWhere('type', 'expense')?->total;
+
+            return [
+                ...$c->only(['id', 'name', 'color']),
+                'in' => $in,
+                'out' => $out,
+                'balance' => $in - $out,
+                'count' => (int) $rows->sum('count'),
+                'last_date' => $rows->max('last_date'),
+            ];
+        })->values();
+    }
+
+    /**
      * Ringkasan posisi keuangan (BR-01): uang siap pakai, dana darurat, piutang, aset, utang, kekayaan bersih.
      * Dengan $asOf hanya saldo rekening yang dihitung mundur; piutang, aset & utang memakai nilai terkini.
      */
@@ -126,8 +161,11 @@ class FinanceService
         // Dompet Tujuan (kesehatan, tabungan anak, dll.) sudah dialokasikan, bukan uang siap pakai
         $pockets = (int) $accounts->where('type', 'pocket')->where('is_emergency_fund', false)->sum('balance');
 
+        // Uang titipan/usaha yang masih mengendap di rekening: milik orang lain
+        $held = (int) $this->heldFunds($asOf)->sum(fn ($f) => max(0, $f['balance']));
+
         if ($asOf !== null) {
-            return ['liquid' => $liquid, 'investment' => $investment, 'pockets' => $pockets];
+            return ['liquid' => $liquid, 'investment' => $investment, 'pockets' => $pockets, 'held' => $held];
         }
 
         $receivables = (int) $this->user->receivables()->get()->sum(fn ($r) => $r->remainingPrincipal());
@@ -136,8 +174,9 @@ class FinanceService
         return [
             'total_assets' => $liquid + $investment + $receivables + $assets,
             'liquid' => $liquid,
-            'spendable' => $liquid - ($flagged->isNotEmpty() ? $emergency : 0) - $pockets,
+            'spendable' => $liquid - ($flagged->isNotEmpty() ? $emergency : 0) - $pockets - $held,
             'pockets' => $pockets,
+            'held' => $held,
             'investment' => $investment,
             'receivables' => $receivables,
             'other_assets' => $assets,
@@ -145,7 +184,7 @@ class FinanceService
             'emergency_fund_flagged' => $flagged->isNotEmpty(),
             'total_debt' => $totalDebt,
             'monthly_debt_payment' => (int) $debts->where('remaining_amount', '>', 0)->sum('monthly_payment'),
-            'net_worth' => $liquid + $investment + $receivables + $assets - $totalDebt,
+            'net_worth' => $liquid + $investment + $receivables + $assets - $totalDebt - $held,
         ];
     }
 

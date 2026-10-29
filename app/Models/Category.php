@@ -18,6 +18,9 @@ class Category extends Model
         'asset_deposit' => ['Setoran Investasi', 'expense', '#8b5cf6'],
     ];
 
+    /** Tipe kategori untuk dana titipan / uang usaha yang cuma lewat: bukan pemasukan/pengeluaran pribadi. */
+    public const TITIPAN = 'titipan';
+
     protected $fillable = ['name', 'type', 'color', 'system_key'];
 
     protected function casts(): array

@@ -82,7 +82,7 @@ class ProjectionService
         $actuals = $this->actualTotals($start, $thisMonth);
         // Saldo kas = uang di rekening di luar Dompet Tujuan (isi dompet dihitung sebagai uang keluar)
         $position = $this->finance->position();
-        $liquidNow = $position['liquid'] - $position['pockets'];
+        $liquidNow = $position['liquid'] - $position['pockets'] - $position['held'];
         $pocketTransfers = $this->pocketTransfers($thisMonth);
 
         $principal = (int) $a['friend_principal'];
@@ -128,7 +128,7 @@ class ProjectionService
             if ($m->lt($thisMonth)) {
                 $actual = $actuals[$key] ?? ['income' => 0, 'expense' => 0];
                 $past = $this->finance->position($m->endOfMonth()->toDateString());
-                $balance = $past['liquid'] - $past['pockets'];
+                $balance = $past['liquid'] - $past['pockets'] - $past['held'];
             } elseif ($m->eq($thisMonth)) {
                 // Bulan berjalan: aktual sampai hari ini + sisa rencana yang belum terjadi
                 $actual = $actuals[$key] ?? ['income' => 0, 'expense' => 0];
@@ -228,6 +228,7 @@ class ProjectionService
         $monthExpr = DB::connection()->getDriverName() === 'sqlite' ? "strftime('%Y-%m', date)" : "DATE_FORMAT(date, '%Y-%m')";
         $rows = $this->user->transactions()
             ->whereIn('type', ['income', 'expense'])
+            ->ownMoney()
             ->whereBetween('date', [$from->toDateString(), min($to->endOfMonth(), CarbonImmutable::today())->toDateString()])
             // Belanja dari Dompet Tujuan sudah direncanakan lewat isi dompet bulanan
             ->whereNotIn('account_id', $this->user->accounts()->where('type', 'pocket')->select('id'))

@@ -18,7 +18,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
 }
 
 export function Page({ children }: { children: ReactNode }) {
-    return <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 p-4 pb-24 md:gap-6 md:p-6 md:pb-6">{children}</div>;
+    return <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col gap-4 p-4 pb-24 md:gap-6 md:p-6 md:pb-6">{children}</div>;
 }
 
 export function StatCard({
@@ -35,14 +35,14 @@ export function StatCard({
     tone?: 'default' | 'positive' | 'negative';
 }) {
     return (
-        <div className="bg-card rounded-xl border p-4">
+        <div className="bg-card min-w-0 rounded-xl border p-3 sm:p-4">
             <div className="text-muted-foreground flex items-center justify-between text-xs font-medium sm:text-sm">
                 <span>{label}</span>
                 {Icon && <Icon className="size-4" />}
             </div>
             <div
                 className={cn(
-                    'mt-1 truncate text-lg font-semibold tabular-nums sm:text-2xl',
+                    'mt-1 truncate text-base font-semibold tabular-nums min-[400px]:text-lg sm:text-2xl',
                     tone === 'positive' && 'text-emerald-600 dark:text-emerald-400',
                     tone === 'negative' && 'text-red-600 dark:text-red-400',
                 )}

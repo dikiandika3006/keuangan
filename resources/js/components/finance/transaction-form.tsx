@@ -3,7 +3,7 @@ import { AttachmentPicker } from '@/components/finance/attachment-picker';
 import { MoneyInput } from '@/components/finance/money-input';
 import { Field, FormDialog } from '@/components/finance/ui';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { today } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
@@ -37,10 +37,13 @@ export function TransactionForm({
     open,
     onOpenChange,
     transaction,
+    defaults,
 }: {
     open: boolean;
     onOpenChange: (o: boolean) => void;
     transaction?: Transaction | null;
+    /** Nilai awal untuk transaksi baru, mis. dari halaman Titipan */
+    defaults?: Partial<Pick<FormData, 'type' | 'category_id' | 'note'>>;
 }) {
     const { finance } = usePage<FinanceShared>().props;
     const accounts = finance?.accounts ?? [];
@@ -84,6 +87,7 @@ export function TransactionForm({
                 note: '',
                 attachment: null,
                 remove_attachment: false,
+                ...defaults,
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,6 +103,8 @@ export function TransactionForm({
 
     const { data, setData, errors } = form;
     const filteredCategories = categories.filter((c) => c.type === data.type);
+    // Titipan bisa masuk (diterima) maupun keluar (diteruskan)
+    const titipanCategories = categories.filter((c) => c.type === 'titipan');
 
     return (
         <FormDialog
@@ -174,8 +180,26 @@ export function TransactionForm({
                                                 </span>
                                             </SelectItem>
                                         ))}
+                                        {titipanCategories.length > 0 && (
+                                            <SelectGroup>
+                                                <SelectLabel>Titipan / dana lewat (tidak dihitung)</SelectLabel>
+                                                {titipanCategories.map((c) => (
+                                                    <SelectItem key={c.id} value={String(c.id)}>
+                                                        <span className="flex items-center gap-2">
+                                                            <span className="size-2.5 rounded-full" style={{ backgroundColor: c.color }} />
+                                                            {c.name}
+                                                        </span>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        )}
                                     </SelectContent>
                                 </Select>
+                                {titipanCategories.some((c) => String(c.id) === data.category_id) && (
+                                    <p className="text-muted-foreground text-xs">
+                                        {data.type === 'income' ? 'Uang titipan diterima' : 'Titipan diteruskan/dipakai'} · tidak masuk rekap & anggaran
+                                    </p>
+                                )}
                             </Field>
                         )}
                     </div>

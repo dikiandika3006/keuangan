@@ -24,7 +24,7 @@ class FinanceTest extends TestCase
     {
         $this->actingAs(User::factory()->create());
 
-        foreach (['/dashboard', '/transactions', '/accounts', '/budgets', '/goals', '/debts', '/plan'] as $url) {
+        foreach (['/dashboard', '/transactions', '/accounts', '/budgets', '/goals', '/debts', '/plan', '/calculator/fire', '/calculator/kpr'] as $url) {
             $this->get($url)->assertOk();
         }
     }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -107,5 +108,12 @@ class Transaction extends Model
     public function asset(): BelongsTo
     {
         return $this->belongsTo(Asset::class);
+    }
+
+    /** Hanya uang milik sendiri: transaksi berkategori titipan (dana lewat) dikecualikan. */
+    public function scopeOwnMoney(Builder $query): void
+    {
+        $query->where(fn ($q) => $q->whereNull('category_id')
+            ->orWhereNotIn('category_id', Category::query()->where('type', Category::TITIPAN)->select('id')));
     }
 }

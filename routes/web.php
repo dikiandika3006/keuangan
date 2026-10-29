@@ -13,6 +13,7 @@ use App\Http\Controllers\Finance\ProjectionController;
 use App\Http\Controllers\Finance\RecapController;
 use App\Http\Controllers\Finance\ReceivableController;
 use App\Http\Controllers\Finance\SetupController;
+use App\Http\Controllers\Finance\TitipanController;
 use App\Http\Controllers\Finance\TransactionController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
@@ -63,11 +64,15 @@ Route::middleware(['auth'])->group(function () {
     })->name('backup.run');
 
     Route::get('recap', RecapController::class)->name('recap.index');
+    Route::get('titipan', TitipanController::class)->name('titipan.index');
     Route::get('calendar', CalendarController::class)->name('calendar.index');
     Route::get('monthly', [MonthlyBillController::class, 'index'])->name('monthly.index');
     Route::post('monthly/{recurringItem}/pay', [MonthlyBillController::class, 'pay'])->name('monthly.pay');
     Route::post('monthly/{recurringItem}/renew', [MonthlyBillController::class, 'renew'])->name('monthly.renew');
     Route::post('monthly/{recurringItem}/confirm-end', [MonthlyBillController::class, 'confirmEnd'])->name('monthly.confirm-end');
+
+    Route::inertia('calculator/fire', 'calculator/fire')->name('calculator.fire');
+    Route::inertia('calculator/kpr', 'calculator/kpr')->name('calculator.kpr');
 
     Route::get('plan', [PlanController::class, 'index'])->name('plan.index');
     Route::post('plan/recurring', [PlanController::class, 'store'])->name('recurring.store');

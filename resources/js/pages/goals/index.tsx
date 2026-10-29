@@ -117,7 +117,7 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
                             const months = monthsUntil(g.target_date);
                             const need = monthlyNeeded(g);
                             return (
-                                <div key={g.id} className="bg-card rounded-xl border p-4">
+                                <div key={g.id} className="bg-card min-w-0 rounded-xl border p-4">
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2">

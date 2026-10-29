@@ -9,8 +9,11 @@ import {
     CalendarDays,
     ChartPie,
     CreditCard,
+    Flame,
     Gem,
     HandCoins,
+    House,
+    Handshake,
     LayoutGrid,
     LineChart,
     PiggyBank,
@@ -29,11 +32,14 @@ export const mainNavItems: NavItem[] = [
     { title: 'Rekening', url: '/accounts', icon: Wallet },
     { title: 'Utang & Cicilan', url: '/debts', icon: CreditCard },
     { title: 'Piutang', url: '/receivables', icon: HandCoins },
+    { title: 'Titipan', url: '/titipan', icon: Handshake },
     { title: 'Aset & Investasi', url: '/assets', icon: Gem },
     { title: 'Proyeksi Skenario', url: '/projection', icon: LineChart },
     { title: 'Anggaran', url: '/budgets', icon: PiggyBank },
     { title: 'Target', url: '/goals', icon: Target },
     { title: 'Simulasi Jangka Panjang', url: '/plan', icon: TrendingUp },
+    { title: 'Kalkulator FIRE', url: '/calculator/fire', icon: Flame },
+    { title: 'Kalkulator KPR', url: '/calculator/kpr', icon: House },
 ];
 
 export function AppSidebar() {

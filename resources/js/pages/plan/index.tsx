@@ -1,4 +1,5 @@
 import { MoneyInput } from '@/components/finance/money-input';
+import { PercentInput } from '@/components/finance/percent-input';
 import { DeleteButton, EmptyState, Field, FormDialog, Page, PageHeader, Section, StatCard } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -28,24 +29,6 @@ interface Props {
 }
 
 const tooltipStyle = { backgroundColor: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 };
-
-function PercentInput({ value, onChange, id }: { value: number; onChange: (v: number) => void; id?: string }) {
-    return (
-        <div className="relative">
-            <Input
-                id={id}
-                inputMode="decimal"
-                value={String(value).replace('.', ',')}
-                onChange={(e) => {
-                    const v = parseFloat(e.target.value.replace(',', '.'));
-                    onChange(Number.isFinite(v) ? v : 0);
-                }}
-                className="pr-8"
-            />
-            <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm">%</span>
-        </div>
-    );
-}
 
 export default function Plan({ position, averages, recurringTotals, recurringItems, goals, debts }: Props) {
     const useRecurring = recurringTotals.income > 0 || recurringTotals.expense > 0;

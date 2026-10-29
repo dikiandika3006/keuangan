@@ -32,7 +32,7 @@ class TransactionController extends Controller
             ->when($filters['category_id'] ?? null, fn ($q, $v) => $q->where('category_id', $v))
             ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('note', 'like', "%{$v}%"));
 
-        $totals = (clone $query)->reorder()->selectRaw('type, SUM(amount) as total')->groupBy('type')->pluck('total', 'type');
+        $totals = (clone $query)->reorder()->ownMoney()->selectRaw('type, SUM(amount) as total')->groupBy('type')->pluck('total', 'type');
 
         return Inertia::render('transactions/index', [
             'transactions' => $query->latest('date')->latest('id')->paginate(25)->withQueryString(),

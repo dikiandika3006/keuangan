@@ -19,7 +19,7 @@ class AccountController extends Controller
         $user = $request->user();
 
         // Rata-rata pengeluaran mingguan 8 minggu terakhir, untuk peringatan selisih rekonsiliasi besar (BR-23)
-        $expense8w = (int) $user->transactions()->where('type', 'expense')
+        $expense8w = (int) $user->transactions()->where('type', 'expense')->ownMoney()
             ->whereBetween('date', [now()->subWeeks(8)->toDateString(), now()->toDateString()])->sum('amount');
 
         $allocations = $user->recurringItems()->where('type', 'transfer')->get()->keyBy('to_account_id');

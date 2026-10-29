@@ -18,7 +18,7 @@ export interface Account {
 export interface Category {
     id: number;
     name: string;
-    type: 'income' | 'expense';
+    type: 'income' | 'expense' | 'titipan';
     color: string;
     system_key?: string | null;
 }
@@ -237,6 +237,8 @@ export interface Position {
     total_assets: number;
     liquid: number;
     spendable: number;
+    pockets: number;
+    held: number;
     receivables: number;
     other_assets: number;
     investment: number;

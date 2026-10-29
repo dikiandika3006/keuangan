@@ -11,7 +11,7 @@ use Inertia\Response;
 
 /**
  * Rekap pemasukan & pengeluaran per kategori untuk satu bulan, dibanding bulan lalu,
- * plus tren 12 bulan per kategori. Transfer antar rekening tidak dihitung.
+ * plus tren 12 bulan per kategori. Transfer antar rekening & dana titipan tidak dihitung.
  */
 class RecapController extends Controller
 {
@@ -24,7 +24,7 @@ class RecapController extends Controller
 
         $monthExpr = DB::connection()->getDriverName() === 'sqlite' ? "strftime('%Y-%m', date)" : "DATE_FORMAT(date, '%Y-%m')";
         $rows = $user->transactions()
-            ->whereIn('type', ['income', 'expense'])
+            ->whereIn('type', ['income', 'expense'])->ownMoney()
             ->whereBetween('date', [$trendStart->toDateString(), $start->endOfMonth()->toDateString()])
             ->selectRaw("$monthExpr as month, type, category_id, SUM(amount) as total, COUNT(*) as count")
             ->groupBy('month', 'type', 'category_id')
@@ -66,7 +66,7 @@ class RecapController extends Controller
             'month' => $month,
             'groups' => $groups,
             'transactions' => $user->transactions()
-                ->whereIn('type', ['income', 'expense'])
+                ->whereIn('type', ['income', 'expense'])->ownMoney()
                 ->whereBetween('date', [$start->toDateString(), $start->endOfMonth()->toDateString()])
                 ->with('account:id,name')
                 ->orderByDesc('date')->orderByDesc('id')

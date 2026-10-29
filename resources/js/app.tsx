@@ -27,3 +27,8 @@ createInertiaApp({
 
 // This will set light / dark mode on load...
 initializeTheme();
+
+// PWA: daftarkan service worker agar aplikasi bisa di-install di HP
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}

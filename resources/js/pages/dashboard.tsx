@@ -194,7 +194,11 @@ export default function Dashboard(props: Props) {
                     <StatCard
                         label="Uang Siap Pakai"
                         value={rupiah(position.spendable)}
-                        sub={`Piutang ${compact(position.receivables)} · Aset ${compact(position.other_assets + position.investment)}`}
+                        sub={
+                            position.held > 0
+                                ? `Tanpa titipan ${compact(position.held)} · Piutang ${compact(position.receivables)}`
+                                : `Piutang ${compact(position.receivables)} · Aset ${compact(position.other_assets + position.investment)}`
+                        }
                         icon={Wallet}
                     />
                     <StatCard

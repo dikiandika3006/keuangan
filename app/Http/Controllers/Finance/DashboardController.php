@@ -26,6 +26,7 @@ class DashboardController extends Controller
 
         $spentByCategory = $user->transactions()
             ->where('type', 'expense')
+            ->ownMoney()
             ->where('date', '>=', $monthStart)
             ->selectRaw('category_id, SUM(amount) as total')
             ->groupBy('category_id')

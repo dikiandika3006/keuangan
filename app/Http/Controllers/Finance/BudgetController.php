@@ -21,6 +21,7 @@ class BudgetController extends Controller
 
         $spent = $user->transactions()
             ->where('type', 'expense')
+            ->ownMoney()
             ->where('date', '>=', $start)
             ->selectRaw('category_id, SUM(amount) as total')
             ->groupBy('category_id')
@@ -75,6 +76,10 @@ class BudgetController extends Controller
     public function destroyCategory(Category $category): RedirectResponse
     {
         $this->ensureOwner($category);
+        // Titipan yang sudah punya transaksi tidak boleh dihapus: transaksinya akan terhitung sebagai pemasukan/pengeluaran pribadi
+        if ($category->type === Category::TITIPAN && $category->user->transactions()->where('category_id', $category->id)->exists()) {
+            return back()->withErrors(['category' => 'Titipan ini masih punya transaksi. Hapus atau pindahkan transaksinya dulu.']);
+        }
         $category->delete();
 
         return back()->with('success', 'Kategori dihapus.');
@@ -84,7 +89,7 @@ class BudgetController extends Controller
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:100'],
-            'type' => ['required', 'in:income,expense'],
+            'type' => ['required', 'in:income,expense,'.Category::TITIPAN],
             'color' => ['required', 'string', 'max:20'],
         ]);
     }
