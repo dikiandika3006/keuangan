@@ -1,3 +1,5 @@
+import { intlLocale, locale, t } from '@/lib/i18n';
+
 const idr = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
 const num = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
 
@@ -9,21 +11,22 @@ export function number(value: number): string {
     return num.format(Math.round(value));
 }
 
-/** Format ringkas untuk sumbu grafik & kartu kecil: 1,2 jt / 3,4 M */
+/** Format ringkas untuk sumbu grafik & kartu kecil: 1,2 jt / 3,4 M (Inggris: 1.2M / 3.4B) */
 export function compact(value: number): string {
     const abs = Math.abs(value);
     const sign = value < 0 ? '-' : '';
-    const fmt = (v: number) => v.toLocaleString('id-ID', { maximumFractionDigits: 1 });
-    if (abs >= 1e12) return `${sign}${fmt(abs / 1e12)} T`;
-    if (abs >= 1e9) return `${sign}${fmt(abs / 1e9)} M`;
-    if (abs >= 1e6) return `${sign}${fmt(abs / 1e6)} jt`;
-    if (abs >= 1e3) return `${sign}${fmt(abs / 1e3)} rb`;
+    const fmt = (v: number) => v.toLocaleString(intlLocale, { maximumFractionDigits: 1 });
+    const [tn, bn, mn, th] = locale === 'en' ? ['T', 'B', 'M', 'K'] : [' T', ' M', ' jt', ' rb'];
+    if (abs >= 1e12) return `${sign}${fmt(abs / 1e12)}${tn}`;
+    if (abs >= 1e9) return `${sign}${fmt(abs / 1e9)}${bn}`;
+    if (abs >= 1e6) return `${sign}${fmt(abs / 1e6)}${mn}`;
+    if (abs >= 1e3) return `${sign}${fmt(abs / 1e3)}${th}`;
     return `${sign}${fmt(abs)}`;
 }
 
 export function formatDate(value: string | null, opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }): string {
     if (!value) return '-';
-    return new Date(value + (value.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('id-ID', opts);
+    return new Date(value + (value.length === 10 ? 'T00:00:00' : '')).toLocaleDateString(intlLocale, opts);
 }
 
 export function today(): string {
@@ -52,30 +55,30 @@ export function percent(part: number, whole: number): number {
 }
 
 export const ACCOUNT_TYPES: Record<string, string> = {
-    bank: 'Bank',
-    cash: 'Tunai',
-    ewallet: 'E-Wallet',
-    investment: 'Investasi',
-    pocket: 'Dompet Tujuan',
+    bank: t('Bank'),
+    cash: t('Tunai'),
+    ewallet: t('E-Wallet'),
+    investment: t('Investasi'),
+    pocket: t('Dompet Tujuan'),
 };
 
-export const PRIORITIES: Record<number, string> = { 1: 'Tinggi', 2: 'Sedang', 3: 'Rendah' };
+export const PRIORITIES: Record<number, string> = { 1: t('Tinggi'), 2: t('Sedang'), 3: t('Rendah') };
 
 export const DEBT_KINDS: Record<string, string> = {
-    car: 'Kendaraan',
-    house: 'Rumah / KPR',
-    credit_card: 'Kartu kredit',
-    paylater: 'Paylater',
-    personal: 'Pinjaman pribadi',
-    other: 'Lainnya',
+    car: t('Kendaraan'),
+    house: t('Rumah / KPR'),
+    credit_card: t('Kartu kredit'),
+    paylater: t('Paylater'),
+    personal: t('Pinjaman pribadi'),
+    other: t('Lainnya'),
 };
 
 export const ASSET_KINDS: Record<string, string> = {
-    investment: 'Investasi',
-    jht: 'JHT BPJS',
-    business: 'Modal usaha',
-    property: 'Properti / kendaraan',
-    other: 'Lainnya',
+    investment: t('Investasi'),
+    jht: t('JHT BPJS'),
+    business: t('Modal usaha'),
+    property: t('Properti / kendaraan'),
+    other: t('Lainnya'),
 };
 
 /** '2026-11' atau '2026-11-01' → 'Nov 2026' */

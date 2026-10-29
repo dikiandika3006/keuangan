@@ -8,13 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { monthsToPayoff, payoffDate } from '@/lib/debt';
 import { compact, DEBT_KINDS, formatDate, monthLabel, percent, rupiah, today } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { type BreadcrumbItem } from '@/types';
 import { type Debt, type DebtInstallment, type DebtKind } from '@/types/finance';
 import { Head, useForm } from '@inertiajs/react';
 import { CalendarClock, CheckCircle2, ChevronDown, CreditCard, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Utang & Cicilan', href: '/debts' }];
+const breadcrumbs: BreadcrumbItem[] = [{ title: t('Utang & Cicilan'), href: '/debts' }];
 
 type FormData = {
     name: string;
@@ -49,7 +50,7 @@ function payoff(d: Debt): { months: number | null; label: string } {
     if (d.installments?.length) {
         const unpaid = d.installments.filter((i) => !i.paid_at);
         const last = unpaid.at(-1);
-        return { months: unpaid.length, label: last ? monthLabel(last.period, 'long') : 'Lunas' };
+        return { months: unpaid.length, label: last ? monthLabel(last.period, 'long') : t('Lunas') };
     }
     const months = monthsToPayoff(d);
     return { months, label: payoffDate(months) };
@@ -125,38 +126,40 @@ export default function Debts({ debts }: { debts: Debt[] }) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Utang & Cicilan" />
+            <Head title={t('Utang & Cicilan')} />
             <Page>
                 <PageHeader
-                    title="Utang & Cicilan"
-                    description="Isi bulan mulai & sisa tenor agar jadwal cicilan, pengingat jatuh tempo, dan hitung mundur lunas dibuat otomatis."
+                    title={t('Utang & Cicilan')}
+                    description={t(
+                        'Isi bulan mulai & sisa tenor agar jadwal cicilan, pengingat jatuh tempo, dan hitung mundur lunas dibuat otomatis.',
+                    )}
                     actions={
                         <Button onClick={() => openForm(null)}>
-                            <Plus /> Tambah Utang
+                            <Plus /> {t('Tambah Utang')}
                         </Button>
                     }
                 />
 
                 <div className="grid grid-cols-3 gap-3">
                     <StatCard
-                        label="Sisa Utang"
+                        label={t('Sisa Utang')}
                         value={compact(totalRemaining)}
                         sub={rupiah(totalRemaining)}
                         tone={totalRemaining > 0 ? 'negative' : 'default'}
                     />
-                    <StatCard label="Cicilan / Bulan" value={compact(totalMonthly)} sub={rupiah(totalMonthly)} />
+                    <StatCard label={t('Cicilan / Bulan')} value={compact(totalMonthly)} sub={rupiah(totalMonthly)} />
                     <StatCard
-                        label="Bebas Utang"
-                        value={longest ? `${longest} bln` : '-'}
-                        sub={longest ? payoffDate(longest) : 'Tidak ada utang aktif'}
+                        label={t('Bebas Utang')}
+                        value={longest ? t(':n bln', { n: longest }) : '-'}
+                        sub={longest ? payoffDate(longest) : t('Tidak ada utang aktif')}
                     />
                 </div>
 
                 {debts.length === 0 ? (
                     <EmptyState
                         icon={CreditCard}
-                        title="Tidak ada utang tercatat"
-                        description="Catat di sini jika kamu punya cicilan atau pinjaman."
+                        title={t('Tidak ada utang tercatat')}
+                        description={t('Catat di sini jika kamu punya cicilan atau pinjaman.')}
                     />
                 ) : (
                     <div className="grid gap-3 md:grid-cols-2">
@@ -170,20 +173,20 @@ export default function Debts({ debts }: { debts: Debt[] }) {
             <FormDialog
                 open={open}
                 onOpenChange={setOpen}
-                title={editing ? 'Ubah Utang' : 'Tambah Utang'}
+                title={editing ? t('Ubah Utang') : t('Tambah Utang')}
                 onSubmit={submit}
                 processing={form.processing}
             >
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Nama" error={form.errors.name} htmlFor="debt-name">
+                    <Field label={t('Nama')} error={form.errors.name} htmlFor="debt-name">
                         <Input
                             id="debt-name"
                             value={form.data.name}
                             onChange={(e) => form.setData('name', e.target.value)}
-                            placeholder="Cicilan mobil, KPR..."
+                            placeholder={t('Cicilan mobil, KPR...')}
                         />
                     </Field>
-                    <Field label="Jenis" error={form.errors.kind}>
+                    <Field label={t('Jenis')} error={form.errors.kind}>
                         <Select value={form.data.kind} onValueChange={(v) => form.setData('kind', v as DebtKind)}>
                             <SelectTrigger>
                                 <SelectValue />
@@ -197,31 +200,31 @@ export default function Debts({ debts }: { debts: Debt[] }) {
                             </SelectContent>
                         </Select>
                     </Field>
-                    <Field label="Pemberi pinjaman" error={form.errors.lender} htmlFor="debt-lender">
+                    <Field label={t('Pemberi pinjaman')} error={form.errors.lender} htmlFor="debt-lender">
                         <Input
                             id="debt-lender"
                             value={form.data.lender}
                             onChange={(e) => form.setData('lender', e.target.value)}
-                            placeholder="Leasing, bank..."
+                            placeholder={t('Leasing, bank...')}
                         />
                     </Field>
-                    <Field label="Cicilan per bulan" error={form.errors.monthly_payment}>
+                    <Field label={t('Cicilan per bulan')} error={form.errors.monthly_payment}>
                         <MoneyInput value={form.data.monthly_payment} onChange={(v) => form.setData('monthly_payment', v)} />
                     </Field>
-                    <Field label="Bulan cicilan berikutnya" error={form.errors.start_month} htmlFor="debt-start">
+                    <Field label={t('Bulan cicilan berikutnya')} error={form.errors.start_month} htmlFor="debt-start">
                         <MonthPicker id="debt-start" value={form.data.start_month} onChange={(v) => form.setData('start_month', v)} />
                     </Field>
-                    <Field label="Sisa tenor (bulan)" error={form.errors.tenor_months} htmlFor="debt-tenor">
+                    <Field label={t('Sisa tenor (bulan)')} error={form.errors.tenor_months} htmlFor="debt-tenor">
                         <Input
                             id="debt-tenor"
                             type="number"
                             min={1}
                             value={form.data.tenor_months}
                             onChange={(e) => form.setData('tenor_months', e.target.value)}
-                            placeholder="mis. 14"
+                            placeholder={t('mis. 14')}
                         />
                     </Field>
-                    <Field label="Tanggal jatuh tempo" error={form.errors.due_day} htmlFor="debt-due">
+                    <Field label={t('Tanggal jatuh tempo')} error={form.errors.due_day} htmlFor="debt-due">
                         <Input
                             id="debt-due"
                             type="number"
@@ -232,7 +235,7 @@ export default function Debts({ debts }: { debts: Debt[] }) {
                             placeholder="1–31"
                         />
                     </Field>
-                    <Field label="Bunga (% per tahun)" error={form.errors.interest_rate} htmlFor="debt-rate">
+                    <Field label={t('Bunga (% per tahun)')} error={form.errors.interest_rate} htmlFor="debt-rate">
                         <Input
                             id="debt-rate"
                             inputMode="decimal"
@@ -242,14 +245,14 @@ export default function Debts({ debts }: { debts: Debt[] }) {
                     </Field>
                     {!scheduled && (
                         <>
-                            <Field label="Total pinjaman" error={form.errors.total_amount}>
+                            <Field label={t('Total pinjaman')} error={form.errors.total_amount}>
                                 <MoneyInput value={form.data.total_amount} onChange={(v) => form.setData('total_amount', v)} />
                             </Field>
-                            <Field label="Sisa utang saat ini" error={form.errors.remaining_amount}>
+                            <Field label={t('Sisa utang saat ini')} error={form.errors.remaining_amount}>
                                 <MoneyInput
                                     value={form.data.remaining_amount}
                                     onChange={(v) => form.setData('remaining_amount', v)}
-                                    placeholder="Sama dengan total"
+                                    placeholder={t('Sama dengan total')}
                                 />
                             </Field>
                         </>
@@ -257,7 +260,7 @@ export default function Debts({ debts }: { debts: Debt[] }) {
                 </div>
                 {scheduled && (
                     <p className="text-muted-foreground text-xs">
-                        Sisa utang dihitung dari jumlah cicilan yang belum dibayar
+                        {t('Sisa utang dihitung dari jumlah cicilan yang belum dibayar')}
                         {form.data.monthly_payment && form.data.tenor_months
                             ? `: ${form.data.tenor_months} × ${rupiah(Number(form.data.monthly_payment))} = ${rupiah(Number(form.data.monthly_payment) * Number(form.data.tenor_months))}`
                             : ''}
@@ -269,8 +272,8 @@ export default function Debts({ debts }: { debts: Debt[] }) {
             <FormDialog
                 open={payFor !== null}
                 onOpenChange={(o) => !o && setPayFor(null)}
-                title={`Bayar ${payFor?.name ?? ''}`}
-                description="Dicatat sebagai transaksi pengeluaran dari rekening yang dipilih, dan cicilan ditandai lunas."
+                title={t('Bayar :name', { name: payFor?.name ?? '' })}
+                description={t('Dicatat sebagai transaksi pengeluaran dari rekening yang dipilih, dan cicilan ditandai lunas.')}
                 processing={pay.processing}
                 onSubmit={() =>
                     payFor &&
@@ -281,7 +284,7 @@ export default function Debts({ debts }: { debts: Debt[] }) {
                 }
             >
                 {payFor?.installments?.length ? (
-                    <Field label="Cicilan" error={pay.errors.installment_id}>
+                    <Field label={t('Cicilan')} error={pay.errors.installment_id}>
                         <Select
                             value={pay.data.installment_id}
                             onValueChange={(v) => {
@@ -297,7 +300,10 @@ export default function Debts({ debts }: { debts: Debt[] }) {
                                     .filter((i) => !i.paid_at)
                                     .map((i) => (
                                         <SelectItem key={i.id} value={String(i.id)}>
-                                            {monthLabel(i.period)} · jatuh tempo {formatDate(i.due_date, { day: 'numeric', month: 'short' })}
+                                            {t(':month · jatuh tempo :date', {
+                                                month: monthLabel(i.period),
+                                                date: formatDate(i.due_date, { day: 'numeric', month: 'short' }),
+                                            })}
                                         </SelectItem>
                                     ))}
                             </SelectContent>
@@ -305,14 +311,14 @@ export default function Debts({ debts }: { debts: Debt[] }) {
                     </Field>
                 ) : null}
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Nominal" error={pay.errors.amount}>
+                    <Field label={t('Nominal')} error={pay.errors.amount}>
                         <MoneyInput value={pay.data.amount} onChange={(v) => pay.setData('amount', v)} autoFocus />
                     </Field>
-                    <Field label="Tanggal bayar" error={pay.errors.date} htmlFor="pay-date">
+                    <Field label={t('Tanggal bayar')} error={pay.errors.date} htmlFor="pay-date">
                         <Input id="pay-date" type="date" value={pay.data.date} onChange={(e) => pay.setData('date', e.target.value)} />
                     </Field>
                 </div>
-                <Field label="Dari rekening" error={pay.errors.account_id}>
+                <Field label={t('Dari rekening')} error={pay.errors.account_id}>
                     <AccountSelect value={pay.data.account_id} onChange={(v) => pay.setData('account_id', v)} />
                 </Field>
             </FormDialog>
@@ -338,16 +344,16 @@ function DebtCard({ debt: d, onEdit, onPay }: { debt: Debt; onEdit: () => void; 
                         {d.remaining_amount === 0 && <CheckCircle2 className="size-4 text-emerald-500" />}
                     </div>
                     <div className="text-muted-foreground text-xs">
-                        {DEBT_KINDS[d.kind] ?? 'Lainnya'}
+                        {DEBT_KINDS[d.kind] ?? t('Lainnya')}
                         {d.lender ? ` · ${d.lender}` : ''}
-                        {d.due_day ? ` · jatuh tempo tgl ${d.due_day}` : ''}
+                        {d.due_day ? t(' · jatuh tempo tgl :day', { day: d.due_day }) : ''}
                     </div>
                 </div>
                 <div className="flex shrink-0">
                     <Button variant="ghost" size="icon" className="size-8" onClick={onEdit}>
                         <Pencil className="size-4" />
                     </Button>
-                    <DeleteButton url={route('debts.destroy', d.id)} label={`utang ${d.name}`}>
+                    <DeleteButton url={route('debts.destroy', d.id)} label={t('utang :name', { name: d.name })}>
                         <Button variant="ghost" size="icon" className="size-8 text-red-600">
                             <Trash2 className="size-4" />
                         </Button>
@@ -356,23 +362,26 @@ function DebtCard({ debt: d, onEdit, onPay }: { debt: Debt; onEdit: () => void; 
             </div>
             <div className="mt-3 flex items-end justify-between gap-2">
                 <div>
-                    <div className="text-muted-foreground text-xs">Sisa</div>
+                    <div className="text-muted-foreground text-xs">{t('Sisa')}</div>
                     <div className="text-lg font-bold text-red-600 tabular-nums">{rupiah(d.remaining_amount)}</div>
                 </div>
                 <div className="text-right">
-                    <div className="text-muted-foreground text-xs">Cicilan</div>
+                    <div className="text-muted-foreground text-xs">{t('Cicilan')}</div>
                     <div className="font-semibold tabular-nums">{rupiah(d.monthly_payment)}</div>
                 </div>
             </div>
             <ProgressBar className="mt-2" value={progress} color="#10b981" />
             <div className="mt-3 flex items-center justify-between gap-2">
                 <div className="text-muted-foreground text-xs">
-                    {installments.length ? `${paidCount}/${installments.length} cicilan` : `${Math.round(progress)}% terbayar`} ·{' '}
-                    {months === null ? 'cicilan < bunga!' : months === 0 ? 'lunas' : `${months} bln lagi, lunas ${label}`}
+                    {installments.length
+                        ? t(':paid/:total cicilan', { paid: paidCount, total: installments.length })
+                        : t(':pct% terbayar', { pct: Math.round(progress) })}{' '}
+                    ·{' '}
+                    {months === null ? t('cicilan < bunga!') : months === 0 ? t('lunas') : t(':n bln lagi, lunas :date', { n: months, date: label })}
                 </div>
                 {d.remaining_amount > 0 && (
                     <Button size="sm" variant="outline" onClick={() => onPay()}>
-                        Bayar
+                        {t('Bayar')}
                     </Button>
                 )}
             </div>
@@ -389,15 +398,15 @@ function DebtCard({ debt: d, onEdit, onPay }: { debt: Debt; onEdit: () => void; 
                                         {' '}
                                         ·{' '}
                                         {i.paid_at
-                                            ? `dibayar ${formatDate(i.paid_at, { day: 'numeric', month: 'short' })}`
-                                            : `tempo ${formatDate(i.due_date, { day: 'numeric', month: 'short' })}`}
+                                            ? t('dibayar :date', { date: formatDate(i.paid_at, { day: 'numeric', month: 'short' }) })
+                                            : t('tempo :date', { date: formatDate(i.due_date, { day: 'numeric', month: 'short' }) })}
                                     </span>
                                 </span>
                                 <span className="tabular-nums">{compact(i.amount)}</span>
                                 <StatusBadge status={i.status} />
                                 {!i.paid_at && (
                                     <button className="text-primary text-xs hover:underline" onClick={() => onPay(i)}>
-                                        Bayar
+                                        {t('Bayar')}
                                     </button>
                                 )}
                             </li>
@@ -408,7 +417,7 @@ function DebtCard({ debt: d, onEdit, onPay }: { debt: Debt; onEdit: () => void; 
                         onClick={() => setShowAll(!showAll)}
                     >
                         <ChevronDown className={`size-3 transition ${showAll ? 'rotate-180' : ''}`} />
-                        {showAll ? 'Sembunyikan' : `Lihat semua jadwal (${installments.length})`}
+                        {showAll ? t('Sembunyikan') : t('Lihat semua jadwal (:n)', { n: installments.length })}
                     </button>
                 </div>
             )}

@@ -46,7 +46,7 @@ class ReceivableController extends Controller
     {
         $request->user()->receivables()->create($this->validated($request))->syncSchedule();
 
-        return back()->with('success', 'Piutang ditambahkan.');
+        return back()->with('success', __('Piutang ditambahkan.'));
     }
 
     public function update(Request $request, Receivable $receivable): RedirectResponse
@@ -55,7 +55,7 @@ class ReceivableController extends Controller
         $receivable->update($this->validated($request));
         $receivable->syncSchedule();
 
-        return back()->with('success', 'Piutang diperbarui.');
+        return back()->with('success', __('Piutang diperbarui.'));
     }
 
     public function destroy(Receivable $receivable): RedirectResponse
@@ -63,7 +63,7 @@ class ReceivableController extends Controller
         $this->ensureOwner($receivable);
         $receivable->delete();
 
-        return back()->with('success', 'Piutang dihapus.');
+        return back()->with('success', __('Piutang dihapus.'));
     }
 
     /**
@@ -85,7 +85,7 @@ class ReceivableController extends Controller
         $received = $schedule->received();
         $interest = min($data['amount'], max(0, $schedule->interest_due - $received['interest']));
         $principal = $data['amount'] - $interest;
-        $month = $schedule->period->locale('id')->translatedFormat('M Y');
+        $month = $schedule->period->locale(app()->getLocale())->translatedFormat('M Y');
 
         DB::transaction(function () use ($user, $data, $schedule, $interest, $principal, $receivable, $month) {
             foreach (['receivable_interest' => $interest, 'receivable_principal' => $principal] as $key => $amount) {
@@ -105,7 +105,7 @@ class ReceivableController extends Controller
             $receivable->syncSchedule();
         });
 
-        return back()->with('success', 'Diterima: bunga Rp'.number_format($interest, 0, ',', '.').' + pokok Rp'.number_format($principal, 0, ',', '.').'.');
+        return back()->with('success', __('Diterima: bunga :interest + pokok :principal.', ['interest' => 'Rp'.number_format($interest, 0, ',', '.'), 'principal' => 'Rp'.number_format($principal, 0, ',', '.')]));
     }
 
     private function validated(Request $request): array

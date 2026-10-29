@@ -31,7 +31,7 @@ class DebtController extends Controller
         $debt = $request->user()->debts()->create($this->validated($request));
         $debt->syncSchedule();
 
-        return back()->with('success', 'Utang ditambahkan.');
+        return back()->with('success', __('Utang ditambahkan.'));
     }
 
     public function update(Request $request, Debt $debt): RedirectResponse
@@ -40,7 +40,7 @@ class DebtController extends Controller
         $debt->update($this->validated($request));
         $debt->syncSchedule();
 
-        return back()->with('success', 'Utang diperbarui.');
+        return back()->with('success', __('Utang diperbarui.'));
     }
 
     /**
@@ -71,7 +71,7 @@ class DebtController extends Controller
                     'category_id' => Category::system($user, 'debt_installment')->id,
                     'amount' => $data['amount'],
                     'date' => $data['date'] ?? now()->toDateString(),
-                    'note' => $installment ? "Cicilan {$debt->name} ".$installment->period->locale('id')->translatedFormat('M Y') : "Bayar {$debt->name}",
+                    'note' => $installment ? "Cicilan {$debt->name} ".$installment->period->locale(app()->getLocale())->translatedFormat('M Y') : "Bayar {$debt->name}",
                     'debt_installment_id' => $installment?->id,
                 ]);
             }
@@ -81,7 +81,7 @@ class DebtController extends Controller
             }
         });
 
-        return back()->with('success', 'Pembayaran dicatat.');
+        return back()->with('success', __('Pembayaran dicatat.'));
     }
 
     public function destroy(Debt $debt): RedirectResponse
@@ -89,7 +89,7 @@ class DebtController extends Controller
         $this->ensureOwner($debt);
         $debt->delete();
 
-        return back()->with('success', 'Utang dihapus.');
+        return back()->with('success', __('Utang dihapus.'));
     }
 
     private function validated(Request $request): array

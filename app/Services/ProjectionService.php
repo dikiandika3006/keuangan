@@ -141,7 +141,7 @@ class ProjectionService
 
             $rows[] = [
                 'month' => $key,
-                'label' => $m->locale('id')->translatedFormat('M Y'),
+                'label' => $m->locale(app()->getLocale())->translatedFormat('M Y'),
                 'is_past' => $m->lt($thisMonth),
                 'is_current' => $m->eq($thisMonth),
                 'principal_start' => $principalStart,

@@ -56,7 +56,7 @@ class ProjectionController extends Controller
             'assumptions' => $source?->assumptions ?? ProjectionService::DEFAULTS,
         ]);
 
-        return redirect()->route('projection.index', ['scenario' => $scenario->id])->with('success', 'Skenario dibuat.');
+        return redirect()->route('projection.index', ['scenario' => $scenario->id])->with('success', __('Skenario dibuat.'));
     }
 
     public function update(Request $request, Scenario $scenario): RedirectResponse
@@ -103,7 +103,7 @@ class ProjectionController extends Controller
             'assumptions' => [...ProjectionService::DEFAULTS, ...$assumptions],
         ]);
 
-        return back()->with('success', 'Skenario disimpan.');
+        return back()->with('success', __('Skenario disimpan.'));
     }
 
     public function activate(Request $request, Scenario $scenario): RedirectResponse
@@ -112,7 +112,7 @@ class ProjectionController extends Controller
         $request->user()->scenarios()->update(['is_active' => false]);
         $scenario->update(['is_active' => true]);
 
-        return back()->with('success', "Skenario {$scenario->name} dipakai di dashboard.");
+        return back()->with('success', __('Skenario :name dipakai di dashboard.', ['name' => $scenario->name]));
     }
 
     public function destroy(Request $request, Scenario $scenario): RedirectResponse
@@ -125,7 +125,7 @@ class ProjectionController extends Controller
             $request->user()->scenarios()->first()?->update(['is_active' => true]);
         }
 
-        return redirect()->route('projection.index')->with('success', 'Skenario dihapus.');
+        return redirect()->route('projection.index')->with('success', __('Skenario dihapus.'));
     }
 
     public function storeEmployment(Request $request): RedirectResponse
@@ -138,7 +138,7 @@ class ProjectionController extends Controller
         ]);
         $request->user()->employmentStatuses()->create($data);
 
-        return back()->with('success', 'Status kerja disimpan.');
+        return back()->with('success', __('Status kerja disimpan.'));
     }
 
     public function destroyEmployment(EmploymentStatus $employmentStatus): RedirectResponse
@@ -146,6 +146,6 @@ class ProjectionController extends Controller
         $this->ensureOwner($employmentStatus);
         $employmentStatus->delete();
 
-        return back()->with('success', 'Status kerja dihapus.');
+        return back()->with('success', __('Status kerja dihapus.'));
     }
 }

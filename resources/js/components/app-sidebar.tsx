@@ -1,6 +1,7 @@
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { t } from '@/lib/i18n';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import {
@@ -12,11 +13,12 @@ import {
     Flame,
     Gem,
     HandCoins,
-    House,
     Handshake,
+    House,
     LayoutGrid,
     LineChart,
     PiggyBank,
+    Settings,
     Target,
     TrendingUp,
     Wallet,
@@ -24,22 +26,23 @@ import {
 import AppLogo from './app-logo';
 
 export const mainNavItems: NavItem[] = [
-    { title: 'Kondisi Keuangan', url: '/dashboard', icon: LayoutGrid },
-    { title: 'Transaksi', url: '/transactions', icon: ArrowLeftRight },
-    { title: 'Rekap Bulanan', url: '/recap', icon: ChartPie },
-    { title: 'Biaya Bulanan', url: '/monthly', icon: CalendarCheck },
-    { title: 'Kalender', url: '/calendar', icon: CalendarDays },
-    { title: 'Rekening', url: '/accounts', icon: Wallet },
-    { title: 'Utang & Cicilan', url: '/debts', icon: CreditCard },
-    { title: 'Piutang', url: '/receivables', icon: HandCoins },
-    { title: 'Titipan', url: '/titipan', icon: Handshake },
-    { title: 'Aset & Investasi', url: '/assets', icon: Gem },
-    { title: 'Proyeksi Skenario', url: '/projection', icon: LineChart },
-    { title: 'Anggaran', url: '/budgets', icon: PiggyBank },
-    { title: 'Target', url: '/goals', icon: Target },
-    { title: 'Simulasi Jangka Panjang', url: '/plan', icon: TrendingUp },
-    { title: 'Kalkulator FIRE', url: '/calculator/fire', icon: Flame },
-    { title: 'Kalkulator KPR', url: '/calculator/kpr', icon: House },
+    { title: t('Kondisi Keuangan'), url: '/dashboard', icon: LayoutGrid },
+    { title: t('Transaksi'), url: '/transactions', icon: ArrowLeftRight },
+    { title: t('Rekap Bulanan'), url: '/recap', icon: ChartPie },
+    { title: t('Biaya Bulanan'), url: '/monthly', icon: CalendarCheck },
+    { title: t('Kalender'), url: '/calendar', icon: CalendarDays },
+    { title: t('Rekening'), url: '/accounts', icon: Wallet },
+    { title: t('Utang & Cicilan'), url: '/debts', icon: CreditCard },
+    { title: t('Piutang'), url: '/receivables', icon: HandCoins },
+    { title: t('Titipan'), url: '/titipan', icon: Handshake },
+    { title: t('Aset & Investasi'), url: '/assets', icon: Gem },
+    { title: t('Proyeksi Skenario'), url: '/projection', icon: LineChart },
+    { title: t('Anggaran'), url: '/budgets', icon: PiggyBank },
+    { title: t('Target'), url: '/goals', icon: Target },
+    { title: t('Simulasi Jangka Panjang'), url: '/plan', icon: TrendingUp },
+    { title: t('Kalkulator FIRE'), url: '/calculator/fire', icon: Flame },
+    { title: t('Kalkulator KPR'), url: '/calculator/kpr', icon: House },
+    { title: t('Pengaturan'), url: '/settings', icon: Settings },
 ];
 
 export function AppSidebar() {

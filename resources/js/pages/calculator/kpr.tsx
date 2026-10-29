@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { kpr, type KprInput, type KprPrepayment } from '@/lib/calculators';
 import { compact, rupiah } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
@@ -13,7 +14,7 @@ import { Banknote, CalendarClock, House, Percent, Plus, RotateCcw, Trash2 } from
 import { useEffect, useState } from 'react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Kalkulator KPR', href: '/calculator/kpr' }];
+const breadcrumbs: BreadcrumbItem[] = [{ title: t('Kalkulator KPR'), href: '/calculator/kpr' }];
 const STORAGE_KEY = 'keuangan.calculator.kpr';
 const tooltipStyle = { backgroundColor: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 };
 
@@ -39,7 +40,7 @@ const DEFAULTS: State = {
 function tenor(months: number): string {
     const y = Math.floor(months / 12);
     const m = months % 12;
-    return [y && `${y} th`, m && `${m} bln`].filter(Boolean).join(' ');
+    return [y && t(':n th', { n: y }), m && t(':n bln', { n: m })].filter(Boolean).join(' ');
 }
 
 function pct(v: number): string {
@@ -96,7 +97,17 @@ export default function KprCalculator() {
         for (const row of r.rows) {
             const y = Math.ceil(row.month / 12);
             let g = out[y - 1];
-            if (!g) g = out[y - 1] = { label: `Tahun ${y}`, payment: 0, principal: 0, interest: 0, extra: 0, penalty: 0, balance: 0, rate: row.rate };
+            if (!g)
+                g = out[y - 1] = {
+                    label: t('Tahun :n', { n: y }),
+                    payment: 0,
+                    principal: 0,
+                    interest: 0,
+                    extra: 0,
+                    penalty: 0,
+                    balance: 0,
+                    rate: row.rate,
+                };
             g.payment += row.payment;
             g.principal += row.principal;
             g.interest += row.interest;
@@ -106,65 +117,65 @@ export default function KprCalculator() {
         }
         return out;
     })();
-    const tableRows = perMonth ? r.rows.map((row) => ({ ...row, label: `Bulan ${row.month}` })) : yearly;
+    const tableRows = perMonth ? r.rows.map((row) => ({ ...row, label: t('Bulan :n', { n: row.month }) })) : yearly;
 
     const chartData = Array.from({ length: Math.ceil(base.months / 12) + 1 }, (_, y) => ({
-        label: `Th ${y}`,
+        label: t('Th :n', { n: y }),
         base: y === 0 ? input.principal : (base.rows[Math.min(base.rows.length, y * 12) - 1]?.balance ?? 0),
         extra: y === 0 ? input.principal : (r.rows[Math.min(r.rows.length, y * 12) - 1]?.balance ?? 0),
     }));
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Kalkulator KPR" />
+            <Head title={t('Kalkulator KPR')} />
             <Page>
-                <PageHeader title="Kalkulator KPR" description="Hitung cicilan anuitas, total bunga, dan simulasi pelunasan sebagian." />
+                <PageHeader title={t('Kalkulator KPR')} description={t('Hitung cicilan anuitas, total bunga, dan simulasi pelunasan sebagian.')} />
 
                 <div className="grid gap-4 lg:grid-cols-3">
                     <Section
-                        title="Data Pinjaman"
+                        title={t('Data Pinjaman')}
                         action={
                             <Button size="sm" variant="ghost" onClick={() => setA(DEFAULTS)}>
-                                <RotateCcw className="size-4" /> Reset
+                                <RotateCcw className="size-4" /> {t('Reset')}
                             </Button>
                         }
                     >
                         <div className="grid gap-4">
-                            <Field label="Harga properti">
+                            <Field label={t('Harga properti')}>
                                 <MoneyInput value={a.price} onChange={(v) => set('price', v || 0)} />
                             </Field>
                             <div className="grid grid-cols-2 gap-3">
-                                <Field label="DP" htmlFor="dp">
+                                <Field label={t('DP')} htmlFor="dp">
                                     <PercentInput id="dp" value={a.downPayment} onChange={(v) => set('downPayment', v)} />
                                 </Field>
-                                <Field label="Tenor" htmlFor="years">
-                                    <PercentInput id="years" suffix="tahun" value={a.years} onChange={(v) => set('years', v)} />
+                                <Field label={t('Tenor')} htmlFor="years">
+                                    <PercentInput id="years" suffix={t('tahun')} value={a.years} onChange={(v) => set('years', v)} />
                                 </Field>
                             </div>
                             <div className="bg-muted/50 grid gap-1 rounded-lg p-3 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Uang muka</span>
+                                    <span className="text-muted-foreground">{t('Uang muka')}</span>
                                     <span className="tabular-nums">{rupiah(dp)}</span>
                                 </div>
                                 <div className="flex justify-between font-medium">
-                                    <span>Pokok pinjaman</span>
+                                    <span>{t('Pokok pinjaman')}</span>
                                     <span className="tabular-nums">{rupiah(input.principal)}</span>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
-                                <Field label="Bunga fixed" htmlFor="fixed">
+                                <Field label={t('Bunga fixed')} htmlFor="fixed">
                                     <PercentInput id="fixed" value={a.fixedRate} onChange={(v) => set('fixedRate', v)} />
                                 </Field>
-                                <Field label="Masa fixed" htmlFor="fixedYears">
-                                    <PercentInput id="fixedYears" suffix="tahun" value={a.fixedYears} onChange={(v) => set('fixedYears', v)} />
+                                <Field label={t('Masa fixed')} htmlFor="fixedYears">
+                                    <PercentInput id="fixedYears" suffix={t('tahun')} value={a.fixedYears} onChange={(v) => set('fixedYears', v)} />
                                 </Field>
                             </div>
                             {a.fixedYears < a.years && (
-                                <Field label="Bunga floating (setelah masa fixed)" htmlFor="floating">
+                                <Field label={t('Bunga floating (setelah masa fixed)')} htmlFor="floating">
                                     <PercentInput id="floating" value={a.floatingRate} onChange={(v) => set('floatingRate', v)} />
                                 </Field>
                             )}
-                            <Field label="Penghasilan per bulan (opsional)">
+                            <Field label={t('Penghasilan per bulan (opsional)')}>
                                 <MoneyInput value={a.income || ''} onChange={(v) => set('income', v || 0)} />
                             </Field>
                         </div>
@@ -173,56 +184,60 @@ export default function KprCalculator() {
                     <div className="grid min-w-0 gap-4 lg:col-span-2">
                         <div className="grid grid-cols-2 gap-3">
                             <StatCard
-                                label="Cicilan per bulan"
+                                label={t('Cicilan per bulan')}
                                 value={rupiah(r.firstPayment)}
-                                sub={ratio !== null ? `${pct(ratio)} dari penghasilan${ratio > 30 ? ' — di atas 30%' : ''}` : 'Cicilan awal'}
+                                sub={
+                                    ratio !== null
+                                        ? t(':pct dari penghasilan', { pct: pct(ratio) }) + (ratio > 30 ? t(' — di atas 30%') : '')
+                                        : t('Cicilan awal')
+                                }
                                 icon={Banknote}
                                 tone={ratio !== null && ratio > 30 ? 'negative' : 'default'}
                             />
                             <StatCard
-                                label="Total bunga"
+                                label={t('Total bunga')}
                                 value={rupiah(r.totalInterest)}
-                                sub={hasExtra ? `Hemat ${rupiah(savedInterest)}` : undefined}
+                                sub={hasExtra ? t('Hemat :amount', { amount: rupiah(savedInterest) }) : undefined}
                                 icon={Percent}
                             />
                             <StatCard
-                                label="Total dibayar"
+                                label={t('Total dibayar')}
                                 value={rupiah(r.totalPaid)}
-                                sub={r.totalPenalty > 0 ? `Termasuk penalti ${rupiah(r.totalPenalty)}` : 'Pokok + bunga'}
+                                sub={r.totalPenalty > 0 ? t('Termasuk penalti :amount', { amount: rupiah(r.totalPenalty) }) : t('Pokok + bunga')}
                                 icon={House}
                             />
                             <StatCard
-                                label="Lunas dalam"
+                                label={t('Lunas dalam')}
                                 value={tenor(r.months)}
-                                sub={hasExtra && r.months < base.months ? `${tenor(base.months - r.months)} lebih cepat` : undefined}
+                                sub={hasExtra && r.months < base.months ? t(':time lebih cepat', { time: tenor(base.months - r.months) }) : undefined}
                                 icon={CalendarClock}
                                 tone={hasExtra && r.months < base.months ? 'positive' : 'default'}
                             />
                         </div>
 
                         <Section
-                            title="Pelunasan Sebagian"
+                            title={t('Pelunasan Sebagian')}
                             action={
                                 <Button
                                     size="sm"
                                     variant="outline"
                                     onClick={() => set('prepayments', [...a.prepayments, { month: Math.min(base.months, 12), amount: 10_000_000 }])}
                                 >
-                                    <Plus className="size-4" /> Tambah
+                                    <Plus className="size-4" /> {t('Tambah')}
                                 </Button>
                             }
                         >
                             <div className="grid gap-4">
                                 <div className="grid gap-3 sm:grid-cols-2">
-                                    <Field label="Penalti pelunasan" htmlFor="penalty">
+                                    <Field label={t('Penalti pelunasan')} htmlFor="penalty">
                                         <PercentInput id="penalty" value={a.penalty} onChange={(v) => set('penalty', v)} />
                                     </Field>
-                                    <Field label="Setelah pelunasan">
+                                    <Field label={t('Setelah pelunasan')}>
                                         <div className="grid grid-cols-2 gap-1 rounded-lg border p-1">
                                             {(
                                                 [
-                                                    ['reduce', 'Cicilan turun'],
-                                                    ['shorten', 'Tenor lebih cepat'],
+                                                    ['reduce', t('Cicilan turun')],
+                                                    ['shorten', t('Tenor lebih cepat')],
                                                 ] as const
                                             ).map(([v, label]) => (
                                                 <button
@@ -242,7 +257,7 @@ export default function KprCalculator() {
                                 </div>
                                 {a.prepayments.length === 0 ? (
                                     <p className="text-muted-foreground text-sm">
-                                        Belum ada rencana. Tambahkan nominal ekstra di bulan tertentu untuk melihat bunga yang bisa dihemat.
+                                        {t('Belum ada rencana. Tambahkan nominal ekstra di bulan tertentu untuk melihat bunga yang bisa dihemat.')}
                                     </p>
                                 ) : (
                                     <div className="grid gap-2">
@@ -250,7 +265,7 @@ export default function KprCalculator() {
                                             <div key={i} className="grid grid-cols-[6rem_1fr_auto] items-center gap-2">
                                                 <div className="relative">
                                                     <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-xs">
-                                                        Bln
+                                                        {t('Bln')}
                                                     </span>
                                                     <Input
                                                         inputMode="numeric"
@@ -265,7 +280,7 @@ export default function KprCalculator() {
                                                 <Button
                                                     size="icon"
                                                     variant="ghost"
-                                                    aria-label="Hapus"
+                                                    aria-label={t('Hapus')}
                                                     onClick={() =>
                                                         set(
                                                             'prepayments',
@@ -283,7 +298,7 @@ export default function KprCalculator() {
                         </Section>
 
                         {hasExtra && (
-                            <Section title="Sisa Pokok">
+                            <Section title={t('Sisa Pokok')}>
                                 <div className="h-64">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={chartData} margin={{ left: -10, right: 4, top: 4 }}>
@@ -292,8 +307,8 @@ export default function KprCalculator() {
                                             <YAxis tickFormatter={compact} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={56} />
                                             <Tooltip formatter={(v) => rupiah(Number(v))} contentStyle={tooltipStyle} />
                                             <Legend wrapperStyle={{ fontSize: 12 }} />
-                                            <Line dataKey="base" name="Tanpa pelunasan" stroke="#64748b" strokeDasharray="4 4" dot={false} />
-                                            <Line dataKey="extra" name="Dengan pelunasan" stroke="#10b981" strokeWidth={2} dot={false} />
+                                            <Line dataKey="base" name={t('Tanpa pelunasan')} stroke="#64748b" strokeDasharray="4 4" dot={false} />
+                                            <Line dataKey="extra" name={t('Dengan pelunasan')} stroke="#10b981" strokeWidth={2} dot={false} />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -303,10 +318,10 @@ export default function KprCalculator() {
                 </div>
 
                 <Section
-                    title="Tabel Angsuran"
+                    title={t('Tabel Angsuran')}
                     action={
                         <Button size="sm" variant="ghost" onClick={() => setPerMonth((v) => !v)}>
-                            {perMonth ? 'Per tahun' : 'Per bulan'}
+                            {perMonth ? t('Per tahun') : t('Per bulan')}
                         </Button>
                     }
                 >
@@ -314,13 +329,13 @@ export default function KprCalculator() {
                         <table className="w-full min-w-[720px] text-sm tabular-nums">
                             <thead className="text-muted-foreground bg-card sticky top-0 text-xs">
                                 <tr className="border-b">
-                                    <th className="px-4 py-2 text-left font-medium">{perMonth ? 'Bulan' : 'Tahun'}</th>
-                                    <th className="px-2 py-2 text-right font-medium">Bunga %</th>
-                                    <th className="px-2 py-2 text-right font-medium">Angsuran</th>
-                                    <th className="px-2 py-2 text-right font-medium">Pokok</th>
-                                    <th className="px-2 py-2 text-right font-medium">Bunga</th>
-                                    {hasExtra && <th className="px-2 py-2 text-right font-medium">Pelunasan</th>}
-                                    <th className="px-4 py-2 text-right font-medium">Sisa pokok</th>
+                                    <th className="px-4 py-2 text-left font-medium">{perMonth ? t('Bulan') : t('Tahun')}</th>
+                                    <th className="px-2 py-2 text-right font-medium">{t('Bunga %')}</th>
+                                    <th className="px-2 py-2 text-right font-medium">{t('Angsuran')}</th>
+                                    <th className="px-2 py-2 text-right font-medium">{t('Pokok')}</th>
+                                    <th className="px-2 py-2 text-right font-medium">{t('Bunga')}</th>
+                                    {hasExtra && <th className="px-2 py-2 text-right font-medium">{t('Pelunasan')}</th>}
+                                    <th className="px-4 py-2 text-right font-medium">{t('Sisa pokok')}</th>
                                 </tr>
                             </thead>
                             <tbody>

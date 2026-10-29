@@ -27,7 +27,7 @@ class GoalController extends Controller
     {
         $request->user()->goals()->create($this->validated($request));
 
-        return back()->with('success', 'Target ditambahkan.');
+        return back()->with('success', __('Target ditambahkan.'));
     }
 
     public function update(Request $request, Goal $goal): RedirectResponse
@@ -35,7 +35,7 @@ class GoalController extends Controller
         $this->ensureOwner($goal);
         $goal->update($this->validated($request));
 
-        return back()->with('success', 'Target diperbarui.');
+        return back()->with('success', __('Target diperbarui.'));
     }
 
     public function deposit(Request $request, Goal $goal): RedirectResponse
@@ -44,7 +44,7 @@ class GoalController extends Controller
         $data = $request->validate(['amount' => ['required', 'integer']]);
         $goal->update(['current_amount' => max(0, $goal->current_amount + $data['amount'])]);
 
-        return back()->with('success', 'Progres target diperbarui.');
+        return back()->with('success', __('Progres target diperbarui.'));
     }
 
     public function destroy(Goal $goal): RedirectResponse
@@ -52,7 +52,7 @@ class GoalController extends Controller
         $this->ensureOwner($goal);
         $goal->delete();
 
-        return back()->with('success', 'Target dihapus.');
+        return back()->with('success', __('Target dihapus.'));
     }
 
     private function validated(Request $request): array

@@ -1,12 +1,16 @@
 <?php
 
+use App\Http\Controllers\Settings\LocaleController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Bisa dipakai juga dari halaman login (disimpan di cookie)
+Route::put('locale', [LocaleController::class, 'update'])->name('locale.update');
+
 Route::middleware('auth')->group(function () {
-    Route::redirect('settings', 'settings/profile');
+    Route::redirect('settings', 'settings/appearance');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');

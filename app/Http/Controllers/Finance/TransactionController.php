@@ -51,7 +51,7 @@ class TransactionController extends Controller
         $transaction = $request->user()->transactions()->create($this->validated($request));
         $this->syncAttachment($request, $transaction);
 
-        return back()->with('success', 'Transaksi disimpan.');
+        return back()->with('success', __('Transaksi disimpan.'));
     }
 
     public function update(Request $request, Transaction $transaction): RedirectResponse
@@ -60,7 +60,7 @@ class TransactionController extends Controller
         $transaction->update($this->validated($request, $transaction));
         $this->syncAttachment($request, $transaction);
 
-        return back()->with('success', 'Transaksi diperbarui.');
+        return back()->with('success', __('Transaksi diperbarui.'));
     }
 
     /** Tampilkan bukti transaksi (hanya pemiliknya). */
@@ -90,7 +90,7 @@ class TransactionController extends Controller
         $this->ensureOwner($transaction);
         $transaction->delete();
 
-        return back()->with('success', 'Transaksi dihapus.');
+        return back()->with('success', __('Transaksi dihapus.'));
     }
 
     private function validated(Request $request, ?Transaction $existing = null): array

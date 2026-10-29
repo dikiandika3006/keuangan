@@ -52,7 +52,7 @@ class MonthlyBillController extends Controller
                     continue;
                 }
                 if (($row[$key] ?? 0) > 0) {
-                    $scenarioLines[] = ['key' => $key, 'name' => $label, 'amount' => (int) $row[$key]];
+                    $scenarioLines[] = ['key' => $key, 'name' => __($label), 'amount' => (int) $row[$key]];
                 }
             }
         }
@@ -80,8 +80,8 @@ class MonthlyBillController extends Controller
         $recurringItem->update(['end_date' => $end]);
 
         return back()->with('success', $end
-            ? "{$recurringItem->name} diperpanjang sampai ".CarbonImmutable::parse($end)->locale('id')->translatedFormat('F Y').'.'
-            : "{$recurringItem->name} berlaku seterusnya.");
+            ? __(':name diperpanjang sampai :month.', ['name' => $recurringItem->name, 'month' => CarbonImmutable::parse($end)->locale(app()->getLocale())->translatedFormat('F Y')])
+            : __(':name berlaku seterusnya.', ['name' => $recurringItem->name]));
     }
 
     /** Konfirmasi item memang selesai di tanggal akhirnya. */
@@ -90,7 +90,7 @@ class MonthlyBillController extends Controller
         $this->ensureOwner($recurringItem);
         $recurringItem->update(['end_confirmed_at' => now()]);
 
-        return back()->with('success', "{$recurringItem->name} dikonfirmasi selesai.");
+        return back()->with('success', __(':name dikonfirmasi selesai.', ['name' => $recurringItem->name]));
     }
 
     /** Catat pembayaran satu biaya tetap → transaksi pengeluaran bertaut ke item tersebut. */
@@ -118,7 +118,7 @@ class MonthlyBillController extends Controller
                 'recurring_item_id' => $recurringItem->id,
             ]);
 
-            return back()->with('success', "{$recurringItem->name} dicatat.");
+            return back()->with('success', __(':name dicatat.', ['name' => $recurringItem->name]));
         }
 
         $categoryId = $data['category_id'] ?? $recurringItem->category_id ?? Category::system($user, 'unspecified_expense')->id;
@@ -136,6 +136,6 @@ class MonthlyBillController extends Controller
             'recurring_item_id' => $recurringItem->id,
         ]);
 
-        return back()->with('success', "Pembayaran {$recurringItem->name} dicatat.");
+        return back()->with('success', __('Pembayaran :name dicatat.', ['name' => $recurringItem->name]));
     }
 }

@@ -1,3 +1,4 @@
+import { intlLocale, t } from '@/lib/i18n';
 import { type Debt } from '@/types/finance';
 
 export interface Assumptions {
@@ -35,7 +36,7 @@ export interface ProjectionResult {
 function monthLabel(offset: number): string {
     const d = new Date();
     d.setMonth(d.getMonth() + offset);
-    return d.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+    return d.toLocaleDateString(intlLocale, { month: 'short', year: 'numeric' });
 }
 
 /**
@@ -127,10 +128,10 @@ export function project(start: { cash: number; investment: number }, debts: Debt
 }
 
 export function describeMonth(m: number | null): string {
-    if (m === null) return 'Belum tercapai';
-    if (m === 0) return 'Sudah tercapai';
+    if (m === null) return t('Belum tercapai');
+    if (m === 0) return t('Sudah tercapai');
     const years = Math.floor(m / 12);
     const months = m % 12;
-    const parts = [years ? `${years} thn` : '', months ? `${months} bln` : ''].filter(Boolean).join(' ');
+    const parts = [years ? t(':n thn', { n: years }) : '', months ? t(':n bln', { n: months }) : ''].filter(Boolean).join(' ');
     return `${parts} (${monthLabel(m)})`;
 }

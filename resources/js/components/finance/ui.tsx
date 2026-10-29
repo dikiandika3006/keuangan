@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
@@ -132,12 +133,12 @@ export function DeleteButton({ url, label, children }: { url: string; label: str
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader>
-                        <DialogTitle>Hapus {label}?</DialogTitle>
-                        <DialogDescription>Data yang dihapus tidak bisa dikembalikan.</DialogDescription>
+                        <DialogTitle>{t('Hapus :label?', { label })}</DialogTitle>
+                        <DialogDescription>{t('Data yang dihapus tidak bisa dikembalikan.')}</DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2">
                         <Button variant="outline" onClick={() => setOpen(false)}>
-                            Batal
+                            {t('Batal')}
                         </Button>
                         <Button
                             variant="destructive"
@@ -153,7 +154,7 @@ export function DeleteButton({ url, label, children }: { url: string; label: str
                                 })
                             }
                         >
-                            Hapus
+                            {t('Hapus')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -163,11 +164,11 @@ export function DeleteButton({ url, label, children }: { url: string; label: str
 }
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
-    paid: { label: 'Lunas', className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' },
-    received: { label: 'Diterima', className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' },
-    partial: { label: 'Sebagian', className: 'bg-amber-500/10 text-amber-700 dark:text-amber-400' },
-    late: { label: 'Terlambat', className: 'bg-red-500/10 text-red-700 dark:text-red-400' },
-    pending: { label: 'Belum', className: 'bg-muted text-muted-foreground' },
+    paid: { label: t('Lunas'), className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' },
+    received: { label: t('Diterima'), className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' },
+    partial: { label: t('Sebagian'), className: 'bg-amber-500/10 text-amber-700 dark:text-amber-400' },
+    late: { label: t('Terlambat'), className: 'bg-red-500/10 text-red-700 dark:text-red-400' },
+    pending: { label: t('Belum'), className: 'bg-muted text-muted-foreground' },
 };
 
 export function StatusBadge({ status, label }: { status: string; label?: string }) {
@@ -199,7 +200,7 @@ export function FormDialog({
     onSubmit,
     processing,
     children,
-    submitLabel = 'Simpan',
+    submitLabel = t('Simpan'),
 }: {
     open: boolean;
     onOpenChange: (o: boolean) => void;
@@ -227,7 +228,7 @@ export function FormDialog({
                     {children}
                     <DialogFooter className="gap-2">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                            Batal
+                            {t('Batal')}
                         </Button>
                         <Button type="submit" disabled={processing}>
                             {submitLabel}

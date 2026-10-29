@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { t } from '@/lib/i18n';
 import { Camera, FileText, Loader2, Paperclip, Upload, X } from 'lucide-react';
 import { type InputHTMLAttributes, useEffect, useRef, useState } from 'react';
 
@@ -85,13 +86,13 @@ export function AttachmentPicker({ file, onFileChange, existing, removed, onRemo
     return (
         <div className="grid gap-1.5">
             <span className="text-sm font-medium">
-                Bukti <span className="text-muted-foreground font-normal">(opsional)</span>
+                {t('Bukti')} <span className="text-muted-foreground font-normal">{t('(opsional)')}</span>
             </span>
 
             {file ? (
                 <div className="flex items-center gap-3 rounded-lg border p-2">
                     {preview ? (
-                        <img src={preview} alt="Pratinjau bukti" className="size-14 shrink-0 rounded object-cover" />
+                        <img src={preview} alt={t('Pratinjau bukti')} className="size-14 shrink-0 rounded object-cover" />
                     ) : (
                         <div className="bg-muted flex size-14 shrink-0 items-center justify-center rounded">
                             <FileText className="text-muted-foreground size-6" />
@@ -99,9 +100,18 @@ export function AttachmentPicker({ file, onFileChange, existing, removed, onRemo
                     )}
                     <div className="min-w-0 flex-1 text-sm">
                         <div className="truncate font-medium">{file.name}</div>
-                        <div className="text-muted-foreground text-xs">{formatSize(file.size)} · tersimpan saat klik Simpan</div>
+                        <div className="text-muted-foreground text-xs">
+                            {formatSize(file.size)} · {t('tersimpan saat klik Simpan')}
+                        </div>
                     </div>
-                    <Button type="button" variant="ghost" size="icon" className="size-8 shrink-0" onClick={() => onFileChange(null)} aria-label="Batal pilih">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0"
+                        onClick={() => onFileChange(null)}
+                        aria-label={t('Batal pilih')}
+                    >
                         <X className="size-4" />
                     </Button>
                 </div>
@@ -109,27 +119,27 @@ export function AttachmentPicker({ file, onFileChange, existing, removed, onRemo
                 <div className="flex items-center gap-3 rounded-lg border p-2 text-sm">
                     <Paperclip className="text-muted-foreground size-4 shrink-0" />
                     <a href={existing.url} target="_blank" rel="noreferrer" className="text-primary min-w-0 flex-1 truncate underline">
-                        {existing.name ?? 'Lihat bukti'}
+                        {existing.name ?? t('Lihat bukti')}
                     </a>
                     <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 text-red-600" onClick={() => onRemovedChange(true)}>
-                        Hapus
+                        {t('Hapus')}
                     </Button>
                 </div>
             ) : null}
 
             <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => cameraRef.current?.click()}>
-                    {busy ? <Loader2 className="animate-spin" /> : <Camera />} Kamera
+                    {busy ? <Loader2 className="animate-spin" /> : <Camera />} {t('Kamera')}
                 </Button>
                 <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
-                    <Upload /> Pilih file
+                    <Upload /> {t('Pilih file')}
                 </Button>
                 {existing && removed && !file && (
                     <button type="button" className="text-muted-foreground text-xs underline" onClick={() => onRemovedChange(false)}>
-                        Batal hapus bukti lama
+                        {t('Batal hapus bukti lama')}
                     </button>
                 )}
-                {(file || showExisting) && <span className="text-muted-foreground text-xs">Pilih lagi untuk mengganti</span>}
+                {(file || showExisting) && <span className="text-muted-foreground text-xs">{t('Pilih lagi untuk mengganti')}</span>}
             </div>
             {/* capture membuka kamera belakang langsung di HP; di laptop jatuh ke pemilih file biasa */}
             {input(cameraRef, { accept: 'image/*', capture: 'environment' })}

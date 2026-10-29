@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { fire, type FireInput } from '@/lib/calculators';
 import { compact, rupiah } from '@/lib/format';
+import { intlLocale, t } from '@/lib/i18n';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { Flag, PiggyBank, RotateCcw, Target, Wallet } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Kalkulator FIRE', href: '/calculator/fire' }];
+const breadcrumbs: BreadcrumbItem[] = [{ title: t('Kalkulator FIRE'), href: '/calculator/fire' }];
 const STORAGE_KEY = 'keuangan.calculator.fire';
 const tooltipStyle = { backgroundColor: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 };
 const MILESTONES = [5, 10, 15, 20, 25, 30];
@@ -28,7 +29,7 @@ const DEFAULTS: FireInput = {
 function duration(months: number): string {
     const y = Math.floor(months / 12);
     const m = months % 12;
-    return [y && `${y} tahun`, m && `${m} bulan`].filter(Boolean).join(' ') || 'Sekarang';
+    return [y && t(':n tahun', { n: y }), m && t(':n bulan', { n: m })].filter(Boolean).join(' ') || t('Sekarang');
 }
 
 export default function FireCalculator() {
@@ -50,50 +51,50 @@ export default function FireCalculator() {
 
     const set = <K extends keyof FireInput>(k: K, v: FireInput[K]) => setA((prev) => ({ ...prev, [k]: v }));
     const r = useMemo(() => fire(a), [a]);
-    const chartData = r.years.map((y) => ({ label: `Th ${y.year}`, deposited: y.deposited, interest: y.interest }));
+    const chartData = r.years.map((y) => ({ label: t('Th :n', { n: y.year }), deposited: y.deposited, interest: y.interest }));
     const fireDate = r.fireMonth !== null ? new Date(new Date().getFullYear(), new Date().getMonth() + r.fireMonth, 1) : null;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Kalkulator FIRE" />
+            <Head title={t('Kalkulator FIRE')} />
             <Page>
                 <PageHeader
-                    title="Kalkulator FIRE"
-                    description="Berapa dana yang harus terkumpul supaya bebas finansial, dan berapa lama kamu bisa mencapainya."
+                    title={t('Kalkulator FIRE')}
+                    description={t('Berapa dana yang harus terkumpul supaya bebas finansial, dan berapa lama kamu bisa mencapainya.')}
                 />
 
                 <div className="grid gap-4 lg:grid-cols-3">
                     <Section
-                        title="Variabel"
+                        title={t('Variabel')}
                         action={
                             <Button size="sm" variant="ghost" onClick={() => setA(DEFAULTS)}>
-                                <RotateCcw className="size-4" /> Reset
+                                <RotateCcw className="size-4" /> {t('Reset')}
                             </Button>
                         }
                     >
                         <div className="grid gap-4">
-                            <Field label="Pengeluaran per bulan">
+                            <Field label={t('Pengeluaran per bulan')}>
                                 <MoneyInput value={a.monthlyExpense} onChange={(v) => set('monthlyExpense', v || 0)} />
                             </Field>
-                            <Field label="Tabungan / investasi per bulan">
+                            <Field label={t('Tabungan / investasi per bulan')}>
                                 <MoneyInput value={a.monthlySaving} onChange={(v) => set('monthlySaving', v || 0)} />
                             </Field>
-                            <Field label="Dana awal yang sudah ada">
+                            <Field label={t('Dana awal yang sudah ada')}>
                                 <MoneyInput value={a.initial} onChange={(v) => set('initial', v || 0)} />
                             </Field>
                             <div className="grid grid-cols-2 gap-3">
-                                <Field label="Return / tahun" htmlFor="rate">
+                                <Field label={t('Return / tahun')} htmlFor="rate">
                                     <PercentInput id="rate" value={a.rate} onChange={(v) => set('rate', v)} />
                                 </Field>
-                                <Field label="Pajak bunga" htmlFor="tax">
+                                <Field label={t('Pajak bunga')} htmlFor="tax">
                                     <PercentInput id="tax" value={a.tax} onChange={(v) => set('tax', v)} />
                                 </Field>
                             </div>
-                            <Field label="Asumsi return saat pensiun (penarikan / tahun)" htmlFor="swr">
+                            <Field label={t('Asumsi return saat pensiun (penarikan / tahun)')} htmlFor="swr">
                                 <PercentInput id="swr" value={a.withdrawalRate} onChange={(v) => set('withdrawalRate', v)} />
                             </Field>
                             <p className="text-muted-foreground text-xs">
-                                Dana target = pengeluaran per tahun ÷ asumsi return. Contoh: {rupiah(a.monthlyExpense)} × 12 ={' '}
+                                {t('Dana target = pengeluaran per tahun ÷ asumsi return. Contoh:')} {rupiah(a.monthlyExpense)} × 12 ={' '}
                                 {rupiah(r.annualExpense)} ÷ {String(a.withdrawalRate).replace('.', ',')}% = {rupiah(r.target)}.
                             </p>
                         </div>
@@ -101,24 +102,24 @@ export default function FireCalculator() {
 
                     <div className="grid min-w-0 gap-4 lg:col-span-2">
                         <div className="grid grid-cols-2 gap-3">
-                            <StatCard label="Pengeluaran / tahun" value={rupiah(r.annualExpense)} icon={Wallet} />
-                            <StatCard label="Dana harus terkumpul" value={rupiah(r.target)} icon={Target} />
+                            <StatCard label={t('Pengeluaran / tahun')} value={rupiah(r.annualExpense)} icon={Wallet} />
+                            <StatCard label={t('Dana harus terkumpul')} value={rupiah(r.target)} icon={Target} />
                             <StatCard
-                                label="Waktu mencapai FIRE"
-                                value={r.fireMonth !== null ? duration(r.fireMonth) : '> 100 tahun'}
-                                sub={fireDate && fireDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                                label={t('Waktu mencapai FIRE')}
+                                value={r.fireMonth !== null ? duration(r.fireMonth) : t('> 100 tahun')}
+                                sub={fireDate && fireDate.toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' })}
                                 icon={Flag}
                                 tone={r.fireMonth !== null ? 'positive' : 'negative'}
                             />
                             <StatCard
-                                label="Passive income / bulan"
+                                label={t('Passive income / bulan')}
                                 value={rupiah((r.target * a.withdrawalRate) / 100 / 12)}
-                                sub="Dari dana target, setelah tercapai"
+                                sub={t('Dari dana target, setelah tercapai')}
                                 icon={PiggyBank}
                             />
                         </div>
 
-                        <Section title="Pertumbuhan Dana">
+                        <Section title={t('Pertumbuhan Dana')}>
                             <div className="h-72">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={chartData} margin={{ left: -10, right: 4, top: 4 }}>
@@ -129,7 +130,7 @@ export default function FireCalculator() {
                                         <Legend wrapperStyle={{ fontSize: 12 }} />
                                         <Area
                                             dataKey="deposited"
-                                            name="Total setoran"
+                                            name={t('Total setoran')}
                                             stackId="1"
                                             stroke="#10b981"
                                             fill="#10b981"
@@ -137,7 +138,7 @@ export default function FireCalculator() {
                                         />
                                         <Area
                                             dataKey="interest"
-                                            name="Bunga (setelah pajak)"
+                                            name={t('Bunga (setelah pajak)')}
                                             stackId="1"
                                             stroke="#8b5cf6"
                                             fill="#8b5cf6"
@@ -148,7 +149,7 @@ export default function FireCalculator() {
                                                 y={r.target}
                                                 stroke="#f59e0b"
                                                 strokeDasharray="4 4"
-                                                label={{ value: 'Target', fontSize: 11, fill: '#f59e0b', position: 'insideTopLeft' }}
+                                                label={{ value: t('Target'), fontSize: 11, fill: '#f59e0b', position: 'insideTopLeft' }}
                                             />
                                         )}
                                     </AreaChart>
@@ -158,17 +159,17 @@ export default function FireCalculator() {
                     </div>
                 </div>
 
-                <Section title="Ringkasan per Periode">
+                <Section title={t('Ringkasan per Periode')}>
                     <div className="-mx-4 overflow-x-auto">
                         <table className="w-full min-w-[560px] text-sm tabular-nums">
                             <thead className="text-muted-foreground text-xs">
                                 <tr className="border-b">
-                                    <th className="px-4 py-2 text-left font-medium">Periode</th>
-                                    <th className="px-2 py-2 text-right font-medium">Total tabungan</th>
-                                    <th className="px-2 py-2 text-right font-medium">Bunga</th>
-                                    <th className="px-2 py-2 text-right font-medium">Hasil total</th>
-                                    <th className="px-2 py-2 text-right font-medium">Kenaikan</th>
-                                    <th className="px-4 py-2 text-right font-medium">Progres target</th>
+                                    <th className="px-4 py-2 text-left font-medium">{t('Periode')}</th>
+                                    <th className="px-2 py-2 text-right font-medium">{t('Total tabungan')}</th>
+                                    <th className="px-2 py-2 text-right font-medium">{t('Bunga')}</th>
+                                    <th className="px-2 py-2 text-right font-medium">{t('Hasil total')}</th>
+                                    <th className="px-2 py-2 text-right font-medium">{t('Kenaikan')}</th>
+                                    <th className="px-4 py-2 text-right font-medium">{t('Progres target')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -178,7 +179,7 @@ export default function FireCalculator() {
                                         const reached = r.target > 0 && y.balance >= r.target;
                                         return (
                                             <tr key={y.year} className={reached ? 'border-b bg-emerald-500/5' : 'border-b'}>
-                                                <td className="px-4 py-2">{y.year} tahun</td>
+                                                <td className="px-4 py-2">{t(':n tahun', { n: y.year })}</td>
                                                 <td className="px-2 py-2 text-right">{rupiah(y.deposited)}</td>
                                                 <td className="px-2 py-2 text-right">{rupiah(y.interest)}</td>
                                                 <td className="px-2 py-2 text-right font-medium">{rupiah(y.balance)}</td>

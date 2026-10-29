@@ -1,3 +1,4 @@
+import { intlLocale, t } from '@/lib/i18n';
 import { type Debt } from '@/types/finance';
 
 /**
@@ -15,9 +16,9 @@ export function monthsToPayoff(debt: Pick<Debt, 'remaining_amount' | 'monthly_pa
 }
 
 export function payoffDate(months: number | null): string {
-    if (months === null) return 'Tidak akan lunas';
-    if (months === 0) return 'Lunas';
+    if (months === null) return t('Tidak akan lunas');
+    if (months === 0) return t('Lunas');
     const d = new Date();
     d.setMonth(d.getMonth() + months);
-    return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    return d.toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
 }

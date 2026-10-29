@@ -61,6 +61,6 @@ class SetupController extends Controller
             ProjectionService::ensureScenarios($user);
         });
 
-        return back()->with('success', 'Data awal dari rencana 21 Okt 2026 ditambahkan. Cek tanggal jatuh tempo di Utang & Piutang.');
+        return back()->with('success', __('Data awal dari rencana 21 Okt 2026 ditambahkan. Cek tanggal jatuh tempo di Utang & Piutang.'));
     }
 }

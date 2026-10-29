@@ -33,7 +33,7 @@ class RecapController extends Controller
         $categories = $user->categories()->get(['id', 'name', 'color'])->keyBy('id');
         $category = fn ($id) => [
             'id' => $id,
-            'name' => $categories[$id]->name ?? 'Tanpa kategori',
+            'name' => $categories[$id]->name ?? __('Tanpa kategori'),
             'color' => $categories[$id]->color ?? '#94a3b8',
         ];
 
@@ -72,7 +72,7 @@ class RecapController extends Controller
                 ->orderByDesc('date')->orderByDesc('id')
                 ->get(['id', 'type', 'category_id', 'account_id', 'amount', 'date', 'note']),
             'trend' => [
-                'months' => $months->map(fn ($m) => ['key' => $m->format('Y-m'), 'label' => $m->locale('id')->translatedFormat('M y')])->values(),
+                'months' => $months->map(fn ($m) => ['key' => $m->format('Y-m'), 'label' => $m->locale(app()->getLocale())->translatedFormat('M y')])->values(),
                 ...$trend,
             ],
         ]);

@@ -5,6 +5,7 @@ import { Field, FormDialog } from '@/components/finance/ui';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { today } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { type Category, type Transaction, type TxType } from '@/types/finance';
@@ -16,9 +17,9 @@ interface FinanceShared extends SharedData {
 }
 
 const TYPES: { value: TxType; label: string; className: string }[] = [
-    { value: 'expense', label: 'Pengeluaran', className: 'data-[active=true]:bg-red-600 data-[active=true]:text-white' },
-    { value: 'income', label: 'Pemasukan', className: 'data-[active=true]:bg-emerald-600 data-[active=true]:text-white' },
-    { value: 'transfer', label: 'Transfer', className: 'data-[active=true]:bg-blue-600 data-[active=true]:text-white' },
+    { value: 'expense', label: t('Pengeluaran'), className: 'data-[active=true]:bg-red-600 data-[active=true]:text-white' },
+    { value: 'income', label: t('Pemasukan'), className: 'data-[active=true]:bg-emerald-600 data-[active=true]:text-white' },
+    { value: 'transfer', label: t('Transfer'), className: 'data-[active=true]:bg-blue-600 data-[active=true]:text-white' },
 ];
 
 type FormData = {
@@ -110,43 +111,43 @@ export function TransactionForm({
         <FormDialog
             open={open}
             onOpenChange={onOpenChange}
-            title={transaction ? 'Ubah Transaksi' : 'Catat Transaksi'}
+            title={transaction ? t('Ubah Transaksi') : t('Catat Transaksi')}
             onSubmit={submit}
             processing={form.processing}
         >
             {accounts.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                    Belum ada rekening.{' '}
+                    {t('Belum ada rekening.')}{' '}
                     <Link href={route('accounts.index')} className="text-primary underline" onClick={() => onOpenChange(false)}>
-                        Tambah rekening dulu
+                        {t('Tambah rekening dulu')}
                     </Link>
                     .
                 </p>
             ) : (
                 <>
                     <div className="bg-muted grid grid-cols-3 gap-1 rounded-lg p-1">
-                        {TYPES.map((t) => (
+                        {TYPES.map((ty) => (
                             <button
-                                key={t.value}
+                                key={ty.value}
                                 type="button"
-                                data-active={data.type === t.value}
-                                className={cn('rounded-md px-2 py-1.5 text-sm font-medium transition', t.className)}
-                                onClick={() => setData((d) => ({ ...d, type: t.value, category_id: '' }))}
+                                data-active={data.type === ty.value}
+                                className={cn('rounded-md px-2 py-1.5 text-sm font-medium transition', ty.className)}
+                                onClick={() => setData((d) => ({ ...d, type: ty.value, category_id: '' }))}
                             >
-                                {t.label}
+                                {ty.label}
                             </button>
                         ))}
                     </div>
 
-                    <Field label="Nominal" error={errors.amount} htmlFor="amount">
+                    <Field label={t('Nominal')} error={errors.amount} htmlFor="amount">
                         <MoneyInput id="amount" value={data.amount} onChange={(v) => setData('amount', v)} autoFocus />
                     </Field>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label={data.type === 'transfer' ? 'Dari rekening' : 'Rekening'} error={errors.account_id}>
+                        <Field label={data.type === 'transfer' ? t('Dari rekening') : t('Rekening')} error={errors.account_id}>
                             <Select value={data.account_id} onValueChange={(v) => setData('account_id', v)}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Pilih rekening" />
+                                    <SelectValue placeholder={t('Pilih rekening')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <AccountOptions accounts={accounts} />
@@ -155,10 +156,10 @@ export function TransactionForm({
                         </Field>
 
                         {data.type === 'transfer' ? (
-                            <Field label="Ke rekening" error={errors.to_account_id}>
+                            <Field label={t('Ke rekening')} error={errors.to_account_id}>
                                 <Select value={data.to_account_id} onValueChange={(v) => setData('to_account_id', v)}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Pilih rekening tujuan" />
+                                        <SelectValue placeholder={t('Pilih rekening tujuan')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <AccountOptions accounts={accounts.filter((a) => String(a.id) !== data.account_id)} />
@@ -166,10 +167,10 @@ export function TransactionForm({
                                 </Select>
                             </Field>
                         ) : (
-                            <Field label="Kategori" error={errors.category_id}>
+                            <Field label={t('Kategori')} error={errors.category_id}>
                                 <Select value={data.category_id} onValueChange={(v) => setData('category_id', v)}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Pilih kategori" />
+                                        <SelectValue placeholder={t('Pilih kategori')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {filteredCategories.map((c) => (
@@ -182,7 +183,7 @@ export function TransactionForm({
                                         ))}
                                         {titipanCategories.length > 0 && (
                                             <SelectGroup>
-                                                <SelectLabel>Titipan / dana lewat (tidak dihitung)</SelectLabel>
+                                                <SelectLabel>{t('Titipan / dana lewat (tidak dihitung)')}</SelectLabel>
                                                 {titipanCategories.map((c) => (
                                                     <SelectItem key={c.id} value={String(c.id)}>
                                                         <span className="flex items-center gap-2">
@@ -197,7 +198,8 @@ export function TransactionForm({
                                 </Select>
                                 {titipanCategories.some((c) => String(c.id) === data.category_id) && (
                                     <p className="text-muted-foreground text-xs">
-                                        {data.type === 'income' ? 'Uang titipan diterima' : 'Titipan diteruskan/dipakai'} · tidak masuk rekap & anggaran
+                                        {data.type === 'income' ? t('Uang titipan diterima') : t('Titipan diteruskan/dipakai')} ·{' '}
+                                        {t('tidak masuk rekap & anggaran')}
                                     </p>
                                 )}
                             </Field>
@@ -205,11 +207,11 @@ export function TransactionForm({
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label="Tanggal" error={errors.date} htmlFor="date">
+                        <Field label={t('Tanggal')} error={errors.date} htmlFor="date">
                             <Input id="date" type="date" value={data.date} onChange={(e) => setData('date', e.target.value)} />
                         </Field>
-                        <Field label="Catatan" error={errors.note} htmlFor="note">
-                            <Input id="note" value={data.note} onChange={(e) => setData('note', e.target.value)} placeholder="Opsional" />
+                        <Field label={t('Catatan')} error={errors.note} htmlFor="note">
+                            <Input id="note" value={data.note} onChange={(e) => setData('note', e.target.value)} placeholder={t('Opsional')} />
                         </Field>
                     </div>
 

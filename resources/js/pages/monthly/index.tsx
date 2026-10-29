@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { formatDate, monthLabel, percent, rupiah, today } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { type RecurringItem } from '@/types/finance';
@@ -14,7 +15,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { AlarmClock, CalendarRange, ChevronLeft, ChevronRight, ReceiptText } from 'lucide-react';
 import { useState } from 'react';
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Biaya Bulanan', href: '/monthly' }];
+const breadcrumbs: BreadcrumbItem[] = [{ title: t('Biaya Bulanan'), href: '/monthly' }];
 
 interface Bill {
     /** recurring = biaya tetap di daftar bawah, debt = cicilan berjadwal dari menu Utang, pocket = isi Dompet Tujuan */
@@ -66,11 +67,11 @@ function statusOf(b: Bill, month: string): Status {
 }
 
 const STATUS: Record<Status, { label: string; className: string; bar: string }> = {
-    paid: { label: 'Lunas', className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400', bar: '#10b981' },
-    over: { label: 'Lebih budget', className: 'bg-amber-500/15 text-amber-700 dark:text-amber-400', bar: '#f59e0b' },
-    partial: { label: 'Sebagian', className: 'bg-blue-500/15 text-blue-700 dark:text-blue-400', bar: '#3b82f6' },
-    late: { label: 'Terlambat', className: 'bg-red-500/15 text-red-700 dark:text-red-400', bar: '#ef4444' },
-    pending: { label: 'Belum', className: 'bg-muted text-muted-foreground', bar: '#94a3b8' },
+    paid: { label: t('Lunas'), className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400', bar: '#10b981' },
+    over: { label: t('Lebih budget'), className: 'bg-amber-500/15 text-amber-700 dark:text-amber-400', bar: '#f59e0b' },
+    partial: { label: t('Sebagian'), className: 'bg-blue-500/15 text-blue-700 dark:text-blue-400', bar: '#3b82f6' },
+    late: { label: t('Terlambat'), className: 'bg-red-500/15 text-red-700 dark:text-red-400', bar: '#ef4444' },
+    pending: { label: t('Belum'), className: 'bg-muted text-muted-foreground', bar: '#94a3b8' },
 };
 
 export default function MonthlyBills({ month, bills, scenario, scenarioLines, items, endingSoon, categories }: Props) {
@@ -105,14 +106,17 @@ export default function MonthlyBills({ month, bills, scenario, scenarioLines, it
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Biaya Bulanan" />
+            <Head title={t('Biaya Bulanan')} />
             <Page>
-                <PageHeader title="Biaya Bulanan" description="Semua biaya tetap muncul tiap bulan: budget, yang sudah dibayar, dan sisanya." />
+                <PageHeader
+                    title={t('Biaya Bulanan')}
+                    description={t('Semua biaya tetap muncul tiap bulan: budget, yang sudah dibayar, dan sisanya.')}
+                />
 
                 {endingSoon.length > 0 && (
                     <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
                         <div className="flex items-center gap-2 font-medium">
-                            <AlarmClock className="size-4 text-amber-600" /> Akan berakhir — lanjut atau selesai?
+                            <AlarmClock className="size-4 text-amber-600" /> {t('Akan berakhir — lanjut atau selesai?')}
                         </div>
                         <ul className="mt-2 divide-y">
                             {endingSoon.map((e) => (
@@ -120,7 +124,8 @@ export default function MonthlyBills({ month, bills, scenario, scenarioLines, it
                                     <div className="text-sm">
                                         <span className="font-medium">{e.name}</span>{' '}
                                         <span className="text-muted-foreground">
-                                            ({rupiah(e.amount)}/bln) {e.end_date.slice(0, 7) < currentMonth() ? 'sudah berakhir' : 'berakhir'}{' '}
+                                            ({t(':amount/bln', { amount: rupiah(e.amount) })}){' '}
+                                            {e.end_date.slice(0, 7) < currentMonth() ? t('sudah berakhir') : t('berakhir')}{' '}
                                             {monthLabel(e.end_date, 'long')}
                                         </span>
                                     </div>
@@ -132,7 +137,7 @@ export default function MonthlyBills({ month, bills, scenario, scenarioLines, it
                                                 variant="outline"
                                                 onClick={() => router.post(route('monthly.renew', e.id), { months: n }, { preserveScroll: true })}
                                             >
-                                                +{n} bln
+                                                {t('+:n bln', { n })}
                                             </Button>
                                         ))}
                                         <Button
@@ -140,14 +145,14 @@ export default function MonthlyBills({ month, bills, scenario, scenarioLines, it
                                             variant="outline"
                                             onClick={() => router.post(route('monthly.renew', e.id), { months: null }, { preserveScroll: true })}
                                         >
-                                            Seterusnya
+                                            {t('Seterusnya')}
                                         </Button>
                                         <Button
                                             size="sm"
                                             variant="ghost"
                                             onClick={() => router.post(route('monthly.confirm-end', e.id), {}, { preserveScroll: true })}
                                         >
-                                            Ya, selesai
+                                            {t('Ya, selesai')}
                                         </Button>
                                     </div>
                                 </li>
@@ -157,45 +162,45 @@ export default function MonthlyBills({ month, bills, scenario, scenarioLines, it
                 )}
 
                 <div className="flex items-center justify-between gap-2 rounded-xl border p-2">
-                    <Button variant="ghost" size="icon" onClick={() => go(shiftMonth(month, -1))} aria-label="Bulan sebelumnya">
+                    <Button variant="ghost" size="icon" onClick={() => go(shiftMonth(month, -1))} aria-label={t('Bulan sebelumnya')}>
                         <ChevronLeft />
                     </Button>
-                    <button className="text-sm font-semibold" onClick={() => go(currentMonth())} title="Kembali ke bulan ini">
+                    <button className="text-sm font-semibold" onClick={() => go(currentMonth())} title={t('Kembali ke bulan ini')}>
                         {monthLabel(month, 'long')}
-                        {month === currentMonth() && <span className="text-muted-foreground ml-1 font-normal">(bulan ini)</span>}
+                        {month === currentMonth() && <span className="text-muted-foreground ml-1 font-normal">{t('(bulan ini)')}</span>}
                     </button>
-                    <Button variant="ghost" size="icon" onClick={() => go(shiftMonth(month, 1))} aria-label="Bulan berikutnya">
+                    <Button variant="ghost" size="icon" onClick={() => go(shiftMonth(month, 1))} aria-label={t('Bulan berikutnya')}>
                         <ChevronRight />
                     </Button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     <StatCard
-                        label="Total Biaya Tetap"
+                        label={t('Total Biaya Tetap')}
                         value={rupiah(billTotal + scenarioTotal)}
-                        sub={scenarioTotal ? `${rupiah(scenarioTotal)} dari skenario` : undefined}
+                        sub={scenarioTotal ? t(':amount dari skenario', { amount: rupiah(scenarioTotal) }) : undefined}
                     />
                     <StatCard
-                        label="Sudah Dibayar"
+                        label={t('Sudah Dibayar')}
                         value={rupiah(paidTotal)}
-                        sub={`${Math.round(percent(paidTotal, billTotal))}% dari daftar`}
+                        sub={t(':pct% dari daftar', { pct: Math.round(percent(paidTotal, billTotal)) })}
                         tone="positive"
                     />
-                    <StatCard label="Belum Dibayar" value={rupiah(remaining)} tone={remaining > 0 ? 'negative' : 'default'} />
+                    <StatCard label={t('Belum Dibayar')} value={rupiah(remaining)} tone={remaining > 0 ? 'negative' : 'default'} />
                     <StatCard
-                        label="Terlambat"
+                        label={t('Terlambat')}
                         value={lateCount}
-                        sub={lateCount ? 'lewat tanggal bayar' : 'aman'}
+                        sub={lateCount ? t('lewat tanggal bayar') : t('aman')}
                         tone={lateCount ? 'negative' : 'default'}
                     />
                 </div>
 
-                <Section title={`Tagihan ${monthLabel(month, 'long')}`}>
+                <Section title={t('Tagihan :month', { month: monthLabel(month, 'long') })}>
                     {bills.length === 0 ? (
                         <EmptyState
                             icon={ReceiptText}
-                            title="Belum ada biaya tetap di bulan ini"
-                            description="Tambahkan di daftar paling bawah halaman ini."
+                            title={t('Belum ada biaya tetap di bulan ini')}
+                            description={t('Tambahkan di daftar paling bawah halaman ini.')}
                         />
                     ) : (
                         <ul className="divide-y">
@@ -218,22 +223,24 @@ export default function MonthlyBills({ month, bills, scenario, scenarioLines, it
                                                 <div className="text-muted-foreground text-xs">
                                                     {b.source === 'debt' ? (
                                                         <Link href={route('debts.index')} className="hover:underline">
-                                                            Cicilan utang
+                                                            {t('Cicilan utang')}
                                                         </Link>
                                                     ) : b.source === 'pocket' ? (
                                                         <Link href={route('accounts.index')} className="hover:underline">
-                                                            Isi dompet → {b.to_account}
+                                                            {t('Isi dompet → :name', { name: b.to_account ?? '' })}
                                                         </Link>
                                                     ) : (
-                                                        (b.category?.name ?? 'Tanpa kategori')
+                                                        (b.category?.name ?? t('Tanpa kategori'))
                                                     )}
-                                                    {b.due_day ? ` · tgl ${b.due_day}` : ''}
+                                                    {b.due_day ? t(' · tgl :day', { day: b.due_day }) : ''}
                                                 </div>
                                             </div>
                                             <div className="shrink-0 text-right">
                                                 <div className="text-sm font-semibold tabular-nums">{rupiah(b.amount)}</div>
                                                 <div className="text-muted-foreground text-xs tabular-nums">
-                                                    {b.source === 'pocket' ? 'diisi' : 'dibayar'} {rupiah(b.paid)}
+                                                    {b.source === 'pocket'
+                                                        ? t('diisi :amount', { amount: rupiah(b.paid) })
+                                                        : t('dibayar :amount', { amount: rupiah(b.paid) })}
                                                 </div>
                                             </div>
                                         </div>
@@ -246,7 +253,7 @@ export default function MonthlyBills({ month, bills, scenario, scenarioLines, it
                                                     className="h-7 shrink-0"
                                                     onClick={() => openPay(b)}
                                                 >
-                                                    {b.source === 'pocket' ? 'Isi' : 'Bayar'}
+                                                    {b.source === 'pocket' ? t('Isi') : t('Bayar')}
                                                 </Button>
                                             )}
                                         </div>
@@ -271,12 +278,12 @@ export default function MonthlyBills({ month, bills, scenario, scenarioLines, it
                     <Section
                         title={
                             <span className="flex items-center gap-2">
-                                <CalendarRange className="size-4" /> Dari asumsi skenario {scenario?.name}
+                                <CalendarRange className="size-4" /> {t('Dari asumsi skenario :name', { name: scenario?.name ?? '' })}
                             </span>
                         }
                         action={
                             <Link href={route('projection.index')} className="text-muted-foreground text-xs hover:underline">
-                                Ubah di Proyeksi
+                                {t('Ubah di Proyeksi')}
                             </Link>
                         }
                     >
@@ -289,8 +296,9 @@ export default function MonthlyBills({ month, bills, scenario, scenarioLines, it
                             ))}
                         </ul>
                         <p className="text-muted-foreground mt-2 text-xs">
-                            Pos dari asumsi skenario yang belum punya tagihan sendiri. Cicilan yang sudah dijadwalkan di menu Utang tampil di daftar
-                            tagihan di atas. Jangan dimasukkan lagi ke daftar di bawah agar tidak terhitung dua kali.
+                            {t(
+                                'Pos dari asumsi skenario yang belum punya tagihan sendiri. Cicilan yang sudah dijadwalkan di menu Utang tampil di daftar tagihan di atas. Jangan dimasukkan lagi ke daftar di bawah agar tidak terhitung dua kali.',
+                            )}
                         </p>
                     </Section>
                 )}
@@ -301,12 +309,19 @@ export default function MonthlyBills({ month, bills, scenario, scenarioLines, it
             <FormDialog
                 open={payFor !== null}
                 onOpenChange={(o) => !o && setPayFor(null)}
-                title={payFor?.source === 'pocket' ? (payFor?.name ?? '') : `Bayar ${payFor?.name ?? ''}`}
+                title={payFor?.source === 'pocket' ? (payFor?.name ?? '') : t('Bayar :name', { name: payFor?.name ?? '' })}
                 description={
                     payFor
                         ? payFor.source === 'pocket'
-                            ? `Rencana ${rupiah(payFor.amount)} · sudah diisi ${rupiah(payFor.paid)}. Tercatat sebagai transfer ke dompet ${payFor.to_account}.`
-                            : `Budget ${rupiah(payFor.amount)} · sudah dibayar ${rupiah(payFor.paid)}. Tercatat sebagai transaksi pengeluaran.`
+                            ? t('Rencana :amount · sudah diisi :paid. Tercatat sebagai transfer ke dompet :name.', {
+                                  amount: rupiah(payFor.amount),
+                                  paid: rupiah(payFor.paid),
+                                  name: payFor.to_account ?? '',
+                              })
+                            : t('Budget :amount · sudah dibayar :paid. Tercatat sebagai transaksi pengeluaran.', {
+                                  amount: rupiah(payFor.amount),
+                                  paid: rupiah(payFor.paid),
+                              })
                         : undefined
                 }
                 onSubmit={() => {
@@ -322,38 +337,40 @@ export default function MonthlyBills({ month, bills, scenario, scenarioLines, it
                 }}
                 processing={pay.processing}
             >
-                <Field label="Nominal" error={pay.errors.amount}>
+                <Field label={t('Nominal')} error={pay.errors.amount}>
                     <MoneyInput value={pay.data.amount} onChange={(v) => pay.setData('amount', v)} autoFocus />
                 </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Dari rekening" error={pay.errors.account_id}>
+                    <Field label={t('Dari rekening')} error={pay.errors.account_id}>
                         <Select value={pay.data.account_id} onValueChange={(v) => pay.setData('account_id', v)}>
                             <SelectTrigger>
-                                <SelectValue placeholder="Pilih rekening" />
+                                <SelectValue placeholder={t('Pilih rekening')} />
                             </SelectTrigger>
                             <SelectContent>
                                 <AccountOptions accounts={accounts.filter((a) => a.id !== payFor?.to_account_id)} />
                             </SelectContent>
                         </Select>
                     </Field>
-                    <Field label="Tanggal" error={pay.errors.date} htmlFor="pay-date">
+                    <Field label={t('Tanggal')} error={pay.errors.date} htmlFor="pay-date">
                         <Input id="pay-date" type="date" value={pay.data.date} onChange={(e) => pay.setData('date', e.target.value)} />
                     </Field>
                 </div>
                 {payFor?.source === 'debt' ? (
-                    <p className="text-muted-foreground text-xs">Cicilan bulan ini di menu Utang ikut ditandai lunas dan sisa utang berkurang.</p>
+                    <p className="text-muted-foreground text-xs">
+                        {t('Cicilan bulan ini di menu Utang ikut ditandai lunas dan sisa utang berkurang.')}
+                    </p>
                 ) : payFor?.source === 'pocket' ? (
                     <p className="text-muted-foreground text-xs">
-                        Saldo rekening sumber berkurang dan saldo dompet bertambah. Total kekayaan tidak berubah.
+                        {t('Saldo rekening sumber berkurang dan saldo dompet bertambah. Total kekayaan tidak berubah.')}
                     </p>
                 ) : (
-                    <Field label="Kategori" error={pay.errors.category_id}>
+                    <Field label={t('Kategori')} error={pay.errors.category_id}>
                         <Select value={pay.data.category_id || 'none'} onValueChange={(v) => pay.setData('category_id', v === 'none' ? '' : v)}>
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="none">Tanpa kategori</SelectItem>
+                                <SelectItem value="none">{t('Tanpa kategori')}</SelectItem>
                                 {categories.map((c) => (
                                     <SelectItem key={c.id} value={String(c.id)}>
                                         {c.name}

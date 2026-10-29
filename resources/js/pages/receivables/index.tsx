@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { compact, formatDate, monthLabel, percent, rupiah, today } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { type BreadcrumbItem } from '@/types';
 import { type Receivable, type ReceivableSchedule } from '@/types/finance';
 import { Head, useForm } from '@inertiajs/react';
 import { ExternalLink, HandCoins, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Piutang', href: '/receivables' }];
+const breadcrumbs: BreadcrumbItem[] = [{ title: t('Piutang'), href: '/receivables' }];
 
 type FormData = {
     counterparty: string;
@@ -102,30 +103,35 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Piutang" />
+            <Head title={t('Piutang')} />
             <Page>
                 <PageHeader
-                    title="Piutang"
-                    description="Dana milikmu di pihak lain yang kembali bertahap + bunga, misalnya investasi di teman."
+                    title={t('Piutang')}
+                    description={t('Dana milikmu di pihak lain yang kembali bertahap + bunga, misalnya investasi di teman.')}
                     actions={
                         <Button onClick={() => openForm(null)}>
-                            <Plus /> Tambah Piutang
+                            <Plus /> {t('Tambah Piutang')}
                         </Button>
                     }
                 />
 
                 <div className="grid grid-cols-3 gap-3">
-                    <StatCard label="Sisa Pokok" value={compact(totalRemaining)} sub={rupiah(totalRemaining)} />
-                    <StatCard label="Belum Diterima Bulan Ini" value={compact(dueThisMonth)} sub={rupiah(dueThisMonth)} />
-                    <StatCard label="Terlambat" value={late} sub={late ? 'jadwal lewat H+3' : 'semua aman'} tone={late ? 'negative' : 'default'} />
+                    <StatCard label={t('Sisa Pokok')} value={compact(totalRemaining)} sub={rupiah(totalRemaining)} />
+                    <StatCard label={t('Belum Diterima Bulan Ini')} value={compact(dueThisMonth)} sub={rupiah(dueThisMonth)} />
+                    <StatCard
+                        label={t('Terlambat')}
+                        value={late}
+                        sub={late ? t('jadwal lewat H+3') : t('semua aman')}
+                        tone={late ? 'negative' : 'default'}
+                    />
                 </div>
 
                 {receivables.length === 0 ? (
                     <EmptyState
                         icon={HandCoins}
-                        title="Belum ada piutang"
-                        description="Catat dana di teman beserta bunga dan tarikan pokok per bulan agar jadwal penerimaan dibuat otomatis."
-                        action={<Button onClick={() => openForm(null)}>Tambah Piutang</Button>}
+                        title={t('Belum ada piutang')}
+                        description={t('Catat dana di teman beserta bunga dan tarikan pokok per bulan agar jadwal penerimaan dibuat otomatis.')}
+                        action={<Button onClick={() => openForm(null)}>{t('Tambah Piutang')}</Button>}
                     />
                 ) : (
                     receivables.map((r) => {
@@ -136,17 +142,23 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                                     <div className="min-w-0">
                                         <div className="font-semibold">{r.counterparty}</div>
                                         <div className="text-muted-foreground text-xs">
-                                            Bunga {String(r.interest_pct).replace('.', ',')}%/bln · tarik pokok {compact(r.withdrawal)}/bln
+                                            {t('Bunga :rate%/bln · tarik pokok :amount/bln', {
+                                                rate: String(r.interest_pct).replace('.', ','),
+                                                amount: compact(r.withdrawal),
+                                            })}
                                             {r.withdrawal_change_month &&
-                                                ` → ${compact(r.withdrawal_after ?? 0)} mulai ${monthLabel(r.withdrawal_change_month)}`}{' '}
-                                            · tgl {r.due_day}
+                                                t(' → :amount mulai :month', {
+                                                    amount: compact(r.withdrawal_after ?? 0),
+                                                    month: monthLabel(r.withdrawal_change_month),
+                                                })}{' '}
+                                            {t('· tgl :day', { day: r.due_day })}
                                         </div>
                                         {r.note && <div className="text-muted-foreground text-xs">{r.note}</div>}
                                     </div>
                                     <div className="flex shrink-0">
                                         {r.agreement_url && (
                                             <Button variant="ghost" size="icon" className="size-8" asChild>
-                                                <a href={r.agreement_url} target="_blank" rel="noreferrer" title="Dokumen perjanjian">
+                                                <a href={r.agreement_url} target="_blank" rel="noreferrer" title={t('Dokumen perjanjian')}>
                                                     <ExternalLink className="size-4" />
                                                 </a>
                                             </Button>
@@ -154,7 +166,7 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                                         <Button variant="ghost" size="icon" className="size-8" onClick={() => openForm(r)}>
                                             <Pencil className="size-4" />
                                         </Button>
-                                        <DeleteButton url={route('receivables.destroy', r.id)} label={`piutang ${r.counterparty}`}>
+                                        <DeleteButton url={route('receivables.destroy', r.id)} label={t('piutang :name', { name: r.counterparty })}>
                                             <Button variant="ghost" size="icon" className="size-8 text-red-600">
                                                 <Trash2 className="size-4" />
                                             </Button>
@@ -163,10 +175,12 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                                 </div>
                                 <div className="mt-3 flex items-end justify-between gap-2">
                                     <div>
-                                        <div className="text-muted-foreground text-xs">Sisa pokok</div>
+                                        <div className="text-muted-foreground text-xs">{t('Sisa pokok')}</div>
                                         <div className="text-lg font-bold tabular-nums">{rupiah(r.remaining)}</div>
                                     </div>
-                                    <div className="text-muted-foreground text-right text-xs">dari {rupiah(r.principal)}</div>
+                                    <div className="text-muted-foreground text-right text-xs">
+                                        {t('dari :amount', { amount: rupiah(r.principal) })}
+                                    </div>
                                 </div>
                                 <ProgressBar className="mt-2" value={percent(r.principal - r.remaining, r.principal)} color="#6366f1" />
 
@@ -174,11 +188,11 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                                     <table className="w-full min-w-[480px] text-sm">
                                         <thead className="text-muted-foreground text-left text-xs">
                                             <tr>
-                                                <th className="py-1 font-medium">Bulan</th>
-                                                <th className="py-1 text-right font-medium">Bunga</th>
-                                                <th className="py-1 text-right font-medium">Pokok</th>
-                                                <th className="py-1 text-right font-medium">Diterima</th>
-                                                <th className="py-1 pl-2 font-medium">Status</th>
+                                                <th className="py-1 font-medium">{t('Bulan')}</th>
+                                                <th className="py-1 text-right font-medium">{t('Bunga')}</th>
+                                                <th className="py-1 text-right font-medium">{t('Pokok')}</th>
+                                                <th className="py-1 text-right font-medium">{t('Diterima')}</th>
+                                                <th className="py-1 pl-2 font-medium">{t('Status')}</th>
                                                 <th />
                                             </tr>
                                         </thead>
@@ -188,7 +202,7 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                                                     <td className="py-1.5">
                                                         {monthLabel(s.period)}
                                                         <span className="text-muted-foreground block text-xs">
-                                                            tgl {formatDate(s.due_date, { day: 'numeric', month: 'short' })}
+                                                            {t('tgl :date', { date: formatDate(s.due_date, { day: 'numeric', month: 'short' }) })}
                                                         </span>
                                                     </td>
                                                     <td className="text-right tabular-nums">{compact(s.interest_due)}</td>
@@ -200,7 +214,7 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                                                     <td className="text-right">
                                                         {s.status !== 'received' && (
                                                             <Button size="sm" variant="outline" className="h-7" onClick={() => openReceive(r, s)}>
-                                                                Terima
+                                                                {t('Terima')}
                                                             </Button>
                                                         )}
                                                     </td>
@@ -218,27 +232,32 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
             <FormDialog
                 open={open}
                 onOpenChange={setOpen}
-                title={editing ? 'Ubah Piutang' : 'Tambah Piutang'}
-                description="Jadwal bulanan dibuat dari bulan mulai sampai bulan depan. Bunga dihitung dari sisa pokok awal bulan."
+                title={editing ? t('Ubah Piutang') : t('Tambah Piutang')}
+                description={t('Jadwal bulanan dibuat dari bulan mulai sampai bulan depan. Bunga dihitung dari sisa pokok awal bulan.')}
                 onSubmit={submit}
                 processing={form.processing}
             >
-                <Field label="Nama pihak" error={form.errors.counterparty} htmlFor="rcv-name">
+                <Field label={t('Nama pihak')} error={form.errors.counterparty} htmlFor="rcv-name">
                     <Input
                         id="rcv-name"
                         value={form.data.counterparty}
                         onChange={(e) => form.setData('counterparty', e.target.value)}
-                        placeholder="Investasi di teman"
+                        placeholder={t('Investasi di teman')}
                     />
                 </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Pokok pada bulan mulai" error={form.errors.principal}>
+                    <Field label={t('Pokok pada bulan mulai')} error={form.errors.principal}>
                         <MoneyInput value={form.data.principal} onChange={(v) => form.setData('principal', v)} />
                     </Field>
-                    <Field label="Bulan mulai" error={form.errors.start_month} htmlFor="rcv-start">
-                        <MonthPicker id="rcv-start" value={form.data.start_month} onChange={(v) => form.setData('start_month', v)} clearable={false} />
+                    <Field label={t('Bulan mulai')} error={form.errors.start_month} htmlFor="rcv-start">
+                        <MonthPicker
+                            id="rcv-start"
+                            value={form.data.start_month}
+                            onChange={(v) => form.setData('start_month', v)}
+                            clearable={false}
+                        />
                     </Field>
-                    <Field label="Bunga (% per bulan)" error={form.errors.interest_pct} htmlFor="rcv-rate">
+                    <Field label={t('Bunga (% per bulan)')} error={form.errors.interest_pct} htmlFor="rcv-rate">
                         <Input
                             id="rcv-rate"
                             inputMode="decimal"
@@ -246,10 +265,10 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                             onChange={(e) => form.setData('interest_pct', e.target.value)}
                         />
                     </Field>
-                    <Field label="Tarik pokok per bulan" error={form.errors.withdrawal}>
+                    <Field label={t('Tarik pokok per bulan')} error={form.errors.withdrawal}>
                         <MoneyInput value={form.data.withdrawal} onChange={(v) => form.setData('withdrawal', v)} />
                     </Field>
-                    <Field label="Tanggal janji bayar" error={form.errors.due_day} htmlFor="rcv-due">
+                    <Field label={t('Tanggal janji bayar')} error={form.errors.due_day} htmlFor="rcv-due">
                         <Input
                             id="rcv-due"
                             type="number"
@@ -259,40 +278,42 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                             onChange={(e) => form.setData('due_day', e.target.value)}
                         />
                     </Field>
-                    <Field label="Link dokumen perjanjian" error={form.errors.agreement_url} htmlFor="rcv-url">
+                    <Field label={t('Link dokumen perjanjian')} error={form.errors.agreement_url} htmlFor="rcv-url">
                         <Input
                             id="rcv-url"
                             value={form.data.agreement_url}
                             onChange={(e) => form.setData('agreement_url', e.target.value)}
-                            placeholder="Opsional"
+                            placeholder={t('Opsional')}
                         />
                     </Field>
-                    <Field label="Tarikan berubah mulai" error={form.errors.withdrawal_change_month} htmlFor="rcv-change">
+                    <Field label={t('Tarikan berubah mulai')} error={form.errors.withdrawal_change_month} htmlFor="rcv-change">
                         <MonthPicker
                             id="rcv-change"
                             value={form.data.withdrawal_change_month}
                             onChange={(v) => form.setData('withdrawal_change_month', v)}
                         />
                     </Field>
-                    <Field label="Tarik pokok setelahnya" error={form.errors.withdrawal_after}>
+                    <Field label={t('Tarik pokok setelahnya')} error={form.errors.withdrawal_after}>
                         <MoneyInput
                             value={form.data.withdrawal_after}
                             onChange={(v) => form.setData('withdrawal_after', v)}
-                            placeholder="0 = ambil bunga saja"
+                            placeholder={t('0 = ambil bunga saja')}
                         />
                     </Field>
                 </div>
-                <Field label="Catatan" error={form.errors.note} htmlFor="rcv-note">
-                    <Input id="rcv-note" value={form.data.note} onChange={(e) => form.setData('note', e.target.value)} placeholder="Opsional" />
+                <Field label={t('Catatan')} error={form.errors.note} htmlFor="rcv-note">
+                    <Input id="rcv-note" value={form.data.note} onChange={(e) => form.setData('note', e.target.value)} placeholder={t('Opsional')} />
                 </Field>
             </FormDialog>
 
             <FormDialog
                 open={receiveFor !== null}
                 onOpenChange={(o) => !o && setReceiveFor(null)}
-                title={`Terima dari ${receiveFor?.r.counterparty ?? ''}`}
+                title={t('Terima dari :name', { name: receiveFor?.r.counterparty ?? '' })}
                 description={
-                    receiveFor ? `Jadwal ${monthLabel(receiveFor.s.period, 'long')}. Dialokasikan ke bunga dulu, sisanya ke pokok.` : undefined
+                    receiveFor
+                        ? t('Jadwal :month. Dialokasikan ke bunga dulu, sisanya ke pokok.', { month: monthLabel(receiveFor.s.period, 'long') })
+                        : undefined
                 }
                 processing={receive.processing}
                 onSubmit={() =>
@@ -302,25 +323,25 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
             >
                 {receiveFor && (
                     <div className="bg-muted/50 grid grid-cols-2 gap-2 rounded-lg p-3 text-sm">
-                        <span className="text-muted-foreground">Bunga belum diterima</span>
+                        <span className="text-muted-foreground">{t('Bunga belum diterima')}</span>
                         <span className="text-right tabular-nums">
                             {rupiah(Math.max(0, receiveFor.s.interest_due - receiveFor.s.interest_received))}
                         </span>
-                        <span className="text-muted-foreground">Pokok belum diterima</span>
+                        <span className="text-muted-foreground">{t('Pokok belum diterima')}</span>
                         <span className="text-right tabular-nums">
                             {rupiah(Math.max(0, receiveFor.s.principal_due - receiveFor.s.principal_received))}
                         </span>
                     </div>
                 )}
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Nominal diterima" error={receive.errors.amount}>
+                    <Field label={t('Nominal diterima')} error={receive.errors.amount}>
                         <MoneyInput value={receive.data.amount} onChange={(v) => receive.setData('amount', v)} autoFocus />
                     </Field>
-                    <Field label="Tanggal" error={receive.errors.date} htmlFor="rcv-date">
+                    <Field label={t('Tanggal')} error={receive.errors.date} htmlFor="rcv-date">
                         <Input id="rcv-date" type="date" value={receive.data.date} onChange={(e) => receive.setData('date', e.target.value)} />
                     </Field>
                 </div>
-                <Field label="Masuk ke rekening" error={receive.errors.account_id}>
+                <Field label={t('Masuk ke rekening')} error={receive.errors.account_id}>
                     <AccountSelect value={receive.data.account_id} onChange={(v) => receive.setData('account_id', v)} />
                 </Field>
             </FormDialog>

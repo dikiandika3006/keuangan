@@ -1,0 +1,23 @@
+{
+    "baru": "new",
+    "sama": "same",
+    "Bulan lalu :amount": "Last month :amount",
+    "Pemasukan per Kategori": "Income by Category",
+    "Pengeluaran per Kategori": "Expenses by Category",
+    "Belum ada pemasukan": "No income yet",
+    "Belum ada pengeluaran": "No expenses yet",
+    ":pct% · :n trx": ":pct% · :n txn",
+    "Pemasukan dan pengeluaran per kategori dari data transaksi. Transfer antar rekening tidak dihitung.": "Income and expenses by category from your transactions. Transfers between accounts are not counted.",
+    "Kembali ke bulan ini": "Back to this month",
+    "(berjalan)": "(current)",
+    "Sisa": "Left over",
+    "pengeluaran melebihi pemasukan": "expenses exceed income",
+    "Rasio Tabungan": "Savings Rate",
+    "idealnya ≥ 20%": "ideally ≥ 20%",
+    "Persentase kecil = perubahan dibanding bulan sebelumnya.": "Small percentage = change vs. the previous month.",
+    "Tren 12 Bulan": "12-Month Trend",
+    "Belum ada data": "No data yet",
+    "Rata-rata": "Average",
+    "Total": "Total",
+    "Klik nama bulan untuk melihat rekap bulan tersebut. Rata-rata dihitung dari bulan yang ada transaksinya.": "Tap a month name to see its recap. The average only counts months that have transactions."
+}

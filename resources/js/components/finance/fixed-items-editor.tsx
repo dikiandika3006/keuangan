@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { compact, monthLabel, rupiah } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { type Category, type RecurringItem } from '@/types/finance';
@@ -14,7 +15,7 @@ import { FocusEvent, KeyboardEvent, ReactNode, useState } from 'react';
 
 type Kind = 'expense' | 'income';
 
-// [nama, kategori yang otomatis dipilih bila ada]
+// [nama (diterjemahkan saat tampil), kategori yang otomatis dipilih bila ada]
 const PRESETS: Record<Kind, [string, string][]> = {
     expense: [
         ['Listrik', 'Tagihan & Utilitas'],
@@ -67,9 +68,9 @@ function isActive(item: { start_date: string | null; end_date: string | null }, 
 }
 
 function periodText(start: string, end: string) {
-    if (!start && !end) return 'Setiap bulan, seterusnya';
-    if (start && !end) return `Mulai ${monthLabel(start)}, seterusnya`;
-    if (!start && end) return `Sampai ${monthLabel(end)}`;
+    if (!start && !end) return t('Setiap bulan, seterusnya');
+    if (start && !end) return t('Mulai :month, seterusnya', { month: monthLabel(start) });
+    if (!start && end) return t('Sampai :month', { month: monthLabel(end) });
     return `${monthLabel(start)} – ${monthLabel(end)}`;
 }
 
@@ -170,8 +171,8 @@ function ItemRow({
                     <Input
                         value={d.name}
                         onChange={(e) => setD({ ...d, name: e.target.value })}
-                        placeholder="Nama, mis. Listrik"
-                        aria-label="Nama"
+                        placeholder={t('Nama, mis. Listrik')}
+                        aria-label={t('Nama')}
                         autoFocus={isNew && !initial.name}
                     />
                     {error('name')}
@@ -184,7 +185,7 @@ function ItemRow({
                     <div className="flex items-center gap-1 md:order-last">
                         <span
                             className="flex size-8 items-center justify-center"
-                            title={state === 'saving' ? 'Menyimpan…' : dirty ? 'Belum tersimpan' : 'Tersimpan'}
+                            title={state === 'saving' ? t('Menyimpan…') : dirty ? t('Belum tersimpan') : t('Tersimpan')}
                         >
                             {state === 'saving' ? (
                                 <Loader2 className="text-muted-foreground size-4 animate-spin" />
@@ -195,12 +196,12 @@ function ItemRow({
                             ) : null}
                         </span>
                         {isNew ? (
-                            <Button type="button" variant="ghost" size="icon" className="size-8" onClick={onCancel} aria-label="Batal">
+                            <Button type="button" variant="ghost" size="icon" className="size-8" onClick={onCancel} aria-label={t('Batal')}>
                                 <X className="size-4" />
                             </Button>
                         ) : (
-                            <DeleteButton url={route('recurring.destroy', itemId)} label={d.name || 'item'}>
-                                <Button type="button" variant="ghost" size="icon" className="size-8 text-red-600" aria-label="Hapus">
+                            <DeleteButton url={route('recurring.destroy', itemId)} label={d.name || t('item')}>
+                                <Button type="button" variant="ghost" size="icon" className="size-8 text-red-600" aria-label={t('Hapus')}>
                                     <Trash2 className="size-4" />
                                 </Button>
                             </DeleteButton>
@@ -208,25 +209,22 @@ function ItemRow({
                     </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 md:contents">
-                    <Labeled label="Mulai">
-                        <MonthPicker value={d.start} onChange={(v) => change({ ...d, start: v })} placeholder="Sudah berjalan" />
+                    <Labeled label={t('Mulai')}>
+                        <MonthPicker value={d.start} onChange={(v) => change({ ...d, start: v })} placeholder={t('Sudah berjalan')} />
                     </Labeled>
-                    <Labeled label="Sampai">
-                        <MonthPicker value={d.end} onChange={(v) => change({ ...d, end: v })} placeholder="Seterusnya" />
+                    <Labeled label={t('Sampai')}>
+                        <MonthPicker value={d.end} onChange={(v) => change({ ...d, end: v })} placeholder={t('Seterusnya')} />
                         {error('end_date')}
                     </Labeled>
                 </div>
             </div>
             <div className="grid grid-cols-[1fr_110px] items-center gap-2 md:grid-cols-[1fr_170px_auto] md:gap-3">
-                <Select
-                    value={d.category || 'none'}
-                    onValueChange={(v) => change({ ...d, category: v === 'none' ? '' : v })}
-                >
-                    <SelectTrigger className="h-8 text-xs" aria-label="Kategori">
+                <Select value={d.category || 'none'} onValueChange={(v) => change({ ...d, category: v === 'none' ? '' : v })}>
+                    <SelectTrigger className="h-8 text-xs" aria-label={t('Kategori')}>
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="none">Tanpa kategori</SelectItem>
+                        <SelectItem value="none">{t('Tanpa kategori')}</SelectItem>
                         {categories.map((c) => (
                             <SelectItem key={c.id} value={String(c.id)}>
                                 <span className="flex items-center gap-2">
@@ -243,14 +241,14 @@ function ItemRow({
                     max={31}
                     value={d.dueDay}
                     onChange={(e) => setD({ ...d, dueDay: e.target.value })}
-                    placeholder="Tgl bayar"
-                    aria-label="Tanggal bayar"
+                    placeholder={t('Tgl bayar')}
+                    aria-label={t('Tanggal bayar')}
                     className="h-8 text-xs"
                 />
                 <p className="text-muted-foreground col-span-2 text-xs md:col-span-1">
                     {periodText(d.start, d.end)}
-                    {d.dueDay && ` · tiap tgl ${d.dueDay}`}
-                    {isNew && !valid && ' · isi nama & nominal, tersimpan otomatis'}
+                    {d.dueDay && t(' · tiap tgl :day', { day: d.dueDay })}
+                    {isNew && !valid && t(' · isi nama & nominal, tersimpan otomatis')}
                 </p>
             </div>
             {error('due_day')}
@@ -279,13 +277,13 @@ export function FixedItemsEditor({ items, defaultTab = 'expense' }: { items: Rec
         <Section
             title={
                 <span className="flex items-center gap-2">
-                    <Repeat className="size-4" /> Daftar Biaya & Pemasukan Tetap
+                    <Repeat className="size-4" /> {t('Daftar Biaya & Pemasukan Tetap')}
                 </span>
             }
         >
             <p className="text-muted-foreground mb-3 text-sm">
-                Nominal per bulan. Kosongkan <b>Mulai</b> jika sudah berjalan, kosongkan <b>Sampai</b> jika seterusnya. Berlaku di semua skenario dan
-                tersimpan otomatis.
+                {t('Nominal per bulan. Kosongkan')} <b>{t('Mulai')}</b> {t('jika sudah berjalan, kosongkan')} <b>{t('Sampai')}</b>{' '}
+                {t('jika seterusnya. Berlaku di semua skenario dan tersimpan otomatis.')}
             </p>
 
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -301,7 +299,7 @@ export function FixedItemsEditor({ items, defaultTab = 'expense' }: { items: Rec
                             }}
                             className="data-[active=true]:bg-background rounded-md px-3 py-1.5 text-sm font-medium transition data-[active=true]:shadow-sm"
                         >
-                            {k === 'expense' ? 'Pengeluaran' : 'Pemasukan'}
+                            {k === 'expense' ? t('Pengeluaran') : t('Pemasukan')}
                             <span className={cn('ml-1.5 text-xs tabular-nums', k === 'expense' ? 'text-red-600' : 'text-emerald-600')}>
                                 {compact(totalNow(k))}
                             </span>
@@ -309,15 +307,15 @@ export function FixedItemsEditor({ items, defaultTab = 'expense' }: { items: Rec
                     ))}
                 </div>
                 <div className="text-muted-foreground text-xs">
-                    Bulan ini: <span className="text-foreground font-semibold tabular-nums">{rupiah(totalNow(tab))}</span>
+                    {t('Bulan ini:')} <span className="text-foreground font-semibold tabular-nums">{rupiah(totalNow(tab))}</span>
                 </div>
             </div>
 
             <div className="text-muted-foreground mt-4 hidden grid-cols-[1fr_170px_130px_130px_auto] gap-3 border-b pb-1 text-xs font-medium md:grid">
-                <span>Nama · kategori</span>
-                <span>Per bulan · tgl bayar</span>
-                <span>Mulai</span>
-                <span>Sampai</span>
+                <span>{t('Nama · kategori')}</span>
+                <span>{t('Per bulan · tgl bayar')}</span>
+                <span>{t('Mulai')}</span>
+                <span>{t('Sampai')}</span>
                 <span className="w-[68px]" />
             </div>
 
@@ -350,18 +348,24 @@ export function FixedItemsEditor({ items, defaultTab = 'expense' }: { items: Rec
                     />
                 ))}
                 {list.length === 0 && drafts.length === 0 && (
-                    <p className="text-muted-foreground py-6 text-center text-sm">Belum ada. Pilih contoh di bawah atau tambah sendiri.</p>
+                    <p className="text-muted-foreground py-6 text-center text-sm">{t('Belum ada. Pilih contoh di bawah atau tambah sendiri.')}</p>
                 )}
             </div>
 
             <div className="mt-3 flex flex-wrap gap-1.5">
                 <Button type="button" size="sm" onClick={() => addDraft()}>
-                    <Plus /> Tambah
+                    <Plus /> {t('Tambah')}
                 </Button>
                 {PRESETS[tab]
+                    .map(([p, cat]) => [t(p), cat] as const)
                     .filter(([p]) => !usedNames.has(p.toLowerCase()) && !drafts.some((d) => d.name === p))
                     .map(([p, cat]) => (
-                        <button key={p} type="button" onClick={() => addDraft(p, cat)} className="hover:bg-muted rounded-full border px-3 py-1 text-xs transition">
+                        <button
+                            key={p}
+                            type="button"
+                            onClick={() => addDraft(p, cat)}
+                            className="hover:bg-muted rounded-full border px-3 py-1 text-xs transition"
+                        >
                             + {p}
                         </button>
                     ))}

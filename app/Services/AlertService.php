@@ -32,7 +32,7 @@ class AlertService
             $items[] = [
                 'kind' => 'debt',
                 'id' => $i->id,
-                'title' => "Cicilan {$i->debt->name}",
+                'title' => __('Cicilan :name', ['name' => $i->debt->name]),
                 'amount' => $i->amount,
                 'due_date' => $i->due_date->toDateString(),
                 'status' => $i->status(),
@@ -60,7 +60,7 @@ class AlertService
             $items[] = [
                 'kind' => 'receivable',
                 'id' => $s->id,
-                'title' => "Terima dari {$s->receivable->counterparty}",
+                'title' => __('Terima dari :name', ['name' => $s->receivable->counterparty]),
                 'amount' => $s->interest_due + $s->principal_due - $received['interest'] - $received['principal'],
                 'due_date' => $s->due_date->toDateString(),
                 'status' => $status,
@@ -112,7 +112,7 @@ class AlertService
             if ($item['status'] === 'late') {
                 $alerts[] = [
                     'level' => 'bad',
-                    'message' => "{$item['title']} terlambat sejak ".CarbonImmutable::parse($item['due_date'])->locale('id')->translatedFormat('j M'),
+                    'message' => __(':title terlambat sejak :date', ['title' => $item['title'], 'date' => CarbonImmutable::parse($item['due_date'])->locale(app()->getLocale())->translatedFormat('j M')]),
                     'url' => $item['url'],
                 ];
             }
@@ -121,7 +121,7 @@ class AlertService
         if ($projection && $projection['min_balance'] < 0) {
             $alerts[] = [
                 'level' => 'bad',
-                'message' => "Saldo diproyeksikan minus di {$projection['min_month']}: butuh dana tambahan Rp".number_format(-$projection['min_balance'], 0, ',', '.'),
+                'message' => __('Saldo diproyeksikan minus di :month: butuh dana tambahan :amount', ['month' => $projection['min_month'], 'amount' => 'Rp'.number_format(-$projection['min_balance'], 0, ',', '.')]),
                 'url' => route('projection.index'),
             ];
         }
@@ -130,7 +130,7 @@ class AlertService
         foreach ($this->user->recurringItems()->endingSoon()->orderBy('end_date')->get() as $item) {
             $alerts[] = [
                 'level' => 'warning',
-                'message' => "{$item->name} berakhir ".$item->end_date->locale('id')->translatedFormat('F Y').' — perpanjang atau konfirmasi selesai?',
+                'message' => __(':name berakhir :month — perpanjang atau konfirmasi selesai?', ['name' => $item->name, 'month' => $item->end_date->locale(app()->getLocale())->translatedFormat('F Y')]),
                 'url' => route('monthly.index'),
             ];
         }
@@ -142,7 +142,7 @@ class AlertService
         if ($stale->isNotEmpty()) {
             $alerts[] = [
                 'level' => 'warning',
-                'message' => 'Cocokkan saldo: '.$stale->join(', ', ' & ').' belum direkonsiliasi lebih dari 7 hari',
+                'message' => __('Cocokkan saldo: :names belum direkonsiliasi lebih dari 7 hari', ['names' => $stale->join(', ', ' & ')]),
                 'url' => route('accounts.index'),
             ];
         }

@@ -38,7 +38,7 @@ class AccountController extends Controller
         $account = $request->user()->accounts()->create(Arr::except($data, self::ALLOCATION_FIELDS));
         $this->syncAllocation($account, $data);
 
-        return back()->with('success', $account->type === 'pocket' ? 'Dompet ditambahkan.' : 'Rekening ditambahkan.');
+        return back()->with('success', $account->type === 'pocket' ? __('Dompet ditambahkan.') : __('Rekening ditambahkan.'));
     }
 
     public function update(Request $request, Account $account): RedirectResponse
@@ -48,7 +48,7 @@ class AccountController extends Controller
         $account->update(Arr::except($data, self::ALLOCATION_FIELDS));
         $this->syncAllocation($account, $data);
 
-        return back()->with('success', 'Rekening diperbarui.');
+        return back()->with('success', __('Rekening diperbarui.'));
     }
 
     private const ALLOCATION_FIELDS = ['monthly_allocation', 'funding_account_id', 'allocation_day'];
@@ -81,7 +81,7 @@ class AccountController extends Controller
         $this->ensureOwner($account);
         $account->delete();
 
-        return back()->with('success', 'Rekening dihapus.');
+        return back()->with('success', __('Rekening dihapus.'));
     }
 
     public function reconcile(Request $request, Account $account): RedirectResponse
@@ -95,8 +95,11 @@ class AccountController extends Controller
         $tx = (new FinanceService($request->user()))->reconcile($account, $data['actual_balance'], $data['date']);
 
         return back()->with('success', $tx
-            ? 'Saldo dicocokkan. Selisih Rp'.number_format($tx->amount, 0, ',', '.').' dicatat sebagai '.($tx->type === 'expense' ? 'pengeluaran' : 'pemasukan').' tidak dirinci.'
-            : 'Saldo sudah cocok.');
+            ? __('Saldo dicocokkan. Selisih :amount dicatat sebagai :type tidak dirinci.', [
+                'amount' => 'Rp'.number_format($tx->amount, 0, ',', '.'),
+                'type' => $tx->type === 'expense' ? __('pengeluaran') : __('pemasukan'),
+            ])
+            : __('Saldo sudah cocok.'));
     }
 
     private function validated(Request $request, ?Account $account = null): array

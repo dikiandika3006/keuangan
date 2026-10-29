@@ -36,7 +36,7 @@ class AssetController extends Controller
         $asset = $request->user()->assets()->create($data);
         $asset->valuations()->create(['date' => now()->toDateString(), 'value' => $request->integer('value'), 'note' => 'Nilai awal']);
 
-        return back()->with('success', 'Aset ditambahkan.');
+        return back()->with('success', __('Aset ditambahkan.'));
     }
 
     public function update(Request $request, Asset $asset): RedirectResponse
@@ -44,7 +44,7 @@ class AssetController extends Controller
         $this->ensureOwner($asset);
         $asset->update($this->validated($request));
 
-        return back()->with('success', 'Aset diperbarui.');
+        return back()->with('success', __('Aset diperbarui.'));
     }
 
     public function destroy(Asset $asset): RedirectResponse
@@ -52,7 +52,7 @@ class AssetController extends Controller
         $this->ensureOwner($asset);
         $asset->delete();
 
-        return back()->with('success', 'Aset dihapus.');
+        return back()->with('success', __('Aset dihapus.'));
     }
 
     /** Perbarui nilai aset manual (AST-02). */
@@ -66,7 +66,7 @@ class AssetController extends Controller
         ]);
         $asset->valuations()->create($data);
 
-        return back()->with('success', 'Nilai aset diperbarui.');
+        return back()->with('success', __('Nilai aset diperbarui.'));
     }
 
     /**
@@ -101,7 +101,7 @@ class AssetController extends Controller
             ]);
         });
 
-        return back()->with('success', $deposit ? 'Setoran dicatat.' : 'Pencairan dicatat.');
+        return back()->with('success', $deposit ? __('Setoran dicatat.') : __('Pencairan dicatat.'));
     }
 
     private function validated(Request $request): array

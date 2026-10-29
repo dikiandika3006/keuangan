@@ -64,7 +64,7 @@ class FinanceService
             $expense = (int) $rows->where('month', $key)->where('type', 'expense')->sum('total');
             $series[] = [
                 'month' => $key,
-                'label' => $m->locale('id')->translatedFormat('M y'),
+                'label' => $m->locale(app()->getLocale())->translatedFormat('M y'),
                 'income' => $income,
                 'expense' => $expense,
                 'net' => $income - $expense,
@@ -227,46 +227,46 @@ class FinanceService
         $efMonths = $avg['expense'] > 0 ? $position['emergency_fund'] / $avg['expense'] : null;
         $checks[] = [
             'key' => 'emergency_fund',
-            'label' => 'Dana darurat',
-            'value' => $efMonths === null ? '-' : number_format($efMonths, 1, ',', '.').' bln',
+            'label' => __('Dana darurat'),
+            'value' => $efMonths === null ? '-' : __(':n bln', ['n' => number_format($efMonths, 1, ',', '.')]),
             'status' => $efMonths === null ? 'unknown' : ($efMonths >= 6 ? 'good' : ($efMonths >= 3 ? 'warning' : 'bad')),
-            'hint' => 'Idealnya 3–6x pengeluaran bulanan (6–12x jika sudah berkeluarga / pekerja lepas).',
+            'hint' => __('Idealnya 3–6x pengeluaran bulanan (6–12x jika sudah berkeluarga / pekerja lepas).'),
         ];
 
         $savingRate = $avg['income'] > 0 ? ($avg['income'] - $avg['expense']) / $avg['income'] * 100 : null;
         $checks[] = [
             'key' => 'saving_rate',
-            'label' => 'Rasio tabungan',
+            'label' => __('Rasio tabungan'),
             'value' => $savingRate === null ? '-' : number_format($savingRate, 0, ',', '.').'%',
             'status' => $savingRate === null ? 'unknown' : ($savingRate >= 20 ? 'good' : ($savingRate >= 10 ? 'warning' : 'bad')),
-            'hint' => 'Sisihkan minimal 20% pemasukan untuk tabungan & investasi.',
+            'hint' => __('Sisihkan minimal 20% pemasukan untuk tabungan & investasi.'),
         ];
 
         $debtRatio = $avg['income'] > 0 ? $position['monthly_debt_payment'] / $avg['income'] * 100 : null;
         $checks[] = [
             'key' => 'debt_ratio',
-            'label' => 'Rasio cicilan',
+            'label' => __('Rasio cicilan'),
             'value' => $debtRatio === null ? '-' : number_format($debtRatio, 0, ',', '.').'%',
             'status' => $debtRatio === null ? 'unknown' : ($debtRatio <= 30 ? 'good' : ($debtRatio <= 40 ? 'warning' : 'bad')),
-            'hint' => 'Total cicilan sebaiknya maksimal 30% dari pemasukan.',
+            'hint' => __('Total cicilan sebaiknya maksimal 30% dari pemasukan.'),
         ];
 
         $investRatio = $position['total_assets'] > 0 ? $position['investment'] / $position['total_assets'] * 100 : null;
         $checks[] = [
             'key' => 'investment_ratio',
-            'label' => 'Porsi investasi',
+            'label' => __('Porsi investasi'),
             'value' => $investRatio === null ? '-' : number_format($investRatio, 0, ',', '.').'%',
             'status' => $investRatio === null ? 'unknown' : ($investRatio >= 50 ? 'good' : ($investRatio >= 20 ? 'warning' : 'bad')),
-            'hint' => 'Setelah dana darurat aman, kembangkan aset lewat investasi agar tidak tergerus inflasi.',
+            'hint' => __('Setelah dana darurat aman, kembangkan aset lewat investasi agar tidak tergerus inflasi.'),
         ];
 
         $budgetOver = $thisMonth['expense'] > $thisMonth['income'] && $thisMonth['income'] > 0;
         $checks[] = [
             'key' => 'cashflow',
-            'label' => 'Arus kas bulan ini',
-            'value' => $thisMonth['income'] - $thisMonth['expense'] >= 0 ? 'Surplus' : 'Defisit',
+            'label' => __('Arus kas bulan ini'),
+            'value' => $thisMonth['income'] - $thisMonth['expense'] >= 0 ? __('Surplus') : __('Defisit'),
             'status' => $thisMonth['income'] === 0 && $thisMonth['expense'] === 0 ? 'unknown' : ($budgetOver ? 'bad' : 'good'),
-            'hint' => 'Pastikan pengeluaran bulanan tidak melebihi pemasukan.',
+            'hint' => __('Pastikan pengeluaran bulanan tidak melebihi pemasukan.'),
         ];
 
         $known = collect($checks)->where('status', '!=', 'unknown');

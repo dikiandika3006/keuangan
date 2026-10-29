@@ -1,4 +1,5 @@
 import { formatDate, rupiah } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type Transaction } from '@/types/finance';
 import { ArrowLeftRight, Paperclip } from 'lucide-react';
@@ -7,7 +8,7 @@ import { ReactNode } from 'react';
 export function TransactionRow({ tx, actions, onClick }: { tx: Transaction; actions?: ReactNode; onClick?: () => void }) {
     const isTransfer = tx.type === 'transfer';
     const color = isTransfer ? '#3b82f6' : (tx.category?.color ?? '#94a3b8');
-    const title = isTransfer ? `Transfer ke ${tx.to_account?.name ?? '-'}` : (tx.category?.name ?? 'Tanpa kategori');
+    const title = isTransfer ? t('Transfer ke :name', { name: tx.to_account?.name ?? '-' }) : (tx.category?.name ?? t('Tanpa kategori'));
 
     return (
         <div className={cn('flex items-center gap-3 py-2.5', onClick && 'hover:bg-muted/50 -mx-2 cursor-pointer rounded-lg px-2')} onClick={onClick}>
@@ -24,14 +25,16 @@ export function TransactionRow({ tx, actions, onClick }: { tx: Transaction; acti
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
                             className="text-muted-foreground hover:text-foreground shrink-0"
-                            title="Lihat bukti"
-                            aria-label="Lihat bukti"
+                            title={t('Lihat bukti')}
+                            aria-label={t('Lihat bukti')}
                         >
                             <Paperclip className="size-3.5" />
                         </a>
                     )}
                     {tx.source === 'reconcile' && (
-                        <span className="bg-muted text-muted-foreground shrink-0 rounded px-1.5 py-0.5 text-[10px] font-normal">rekonsiliasi</span>
+                        <span className="bg-muted text-muted-foreground shrink-0 rounded px-1.5 py-0.5 text-[10px] font-normal">
+                            {t('rekonsiliasi')}
+                        </span>
                     )}
                 </div>
                 <div className="text-muted-foreground truncate text-xs">

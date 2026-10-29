@@ -4,13 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { COLORS, compact, percent, rupiah } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Anggaran', href: '/budgets' }];
+const breadcrumbs: BreadcrumbItem[] = [{ title: t('Anggaran'), href: '/budgets' }];
 
 interface CategoryRow {
     id: number;
@@ -63,7 +64,7 @@ export default function Budgets({ categories, monthLabel }: { categories: Catego
             <Button variant="ghost" size="icon" className="size-8" onClick={() => openCat(c)}>
                 <Pencil className="size-4" />
             </Button>
-            <DeleteButton url={route('categories.destroy', c.id)} label={`kategori ${c.name}`}>
+            <DeleteButton url={route('categories.destroy', c.id)} label={t('kategori :name', { name: c.name })}>
                 <Button variant="ghost" size="icon" className="size-8 text-red-600">
                     <Trash2 className="size-4" />
                 </Button>
@@ -73,30 +74,33 @@ export default function Budgets({ categories, monthLabel }: { categories: Catego
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Anggaran" />
+            <Head title={t('Anggaran')} />
             <Page>
-                <PageHeader title="Anggaran & Kategori" description={`Batas pengeluaran bulanan per kategori · ${monthLabel}`} />
+                <PageHeader
+                    title={t('Anggaran & Kategori')}
+                    description={t('Batas pengeluaran bulanan per kategori · :month', { month: monthLabel })}
+                />
 
                 <div className="grid grid-cols-3 gap-3">
-                    <StatCard label="Total Anggaran" value={compact(totalBudget)} sub={rupiah(totalBudget)} />
+                    <StatCard label={t('Total Anggaran')} value={compact(totalBudget)} sub={rupiah(totalBudget)} />
                     <StatCard
-                        label="Terpakai"
+                        label={t('Terpakai')}
                         value={compact(budgetedSpent)}
-                        sub={`${Math.round(percent(budgetedSpent, totalBudget))}% dari anggaran`}
+                        sub={t(':pct% dari anggaran', { pct: Math.round(percent(budgetedSpent, totalBudget)) })}
                     />
                     <StatCard
-                        label="Sisa"
+                        label={t('Sisa')}
                         value={compact(totalBudget - budgetedSpent)}
                         tone={totalBudget - budgetedSpent < 0 ? 'negative' : 'positive'}
-                        sub={`Total keluar ${compact(totalSpent)}`}
+                        sub={t('Total keluar :amount', { amount: compact(totalSpent) })}
                     />
                 </div>
 
                 <Section
-                    title="Kategori Pengeluaran"
+                    title={t('Kategori Pengeluaran')}
                     action={
                         <Button size="sm" variant="outline" onClick={() => openCat(null, 'expense')}>
-                            <Plus /> Kategori
+                            <Plus /> {t('Kategori')}
                         </Button>
                     }
                 >
@@ -112,8 +116,8 @@ export default function Budgets({ categories, monthLabel }: { categories: Catego
                                             <div className="truncate text-sm font-medium">{c.name}</div>
                                             <div className={cn('text-muted-foreground text-xs tabular-nums', over && 'font-medium text-red-600')}>
                                                 {rupiah(c.spent)}
-                                                {c.budget ? ` dari ${rupiah(c.budget)}` : ' terpakai'}
-                                                {over && ' · melebihi anggaran!'}
+                                                {c.budget ? t(' dari :amount', { amount: rupiah(c.budget) }) : t(' terpakai')}
+                                                {over && t(' · melebihi anggaran!')}
                                             </div>
                                         </div>
                                         <Button
@@ -125,7 +129,7 @@ export default function Budgets({ categories, monthLabel }: { categories: Catego
                                                 setBudgetValue(c.budget ?? '');
                                             }}
                                         >
-                                            {c.budget ? 'Ubah' : 'Atur batas'}
+                                            {c.budget ? t('Ubah') : t('Atur batas')}
                                         </Button>
                                         {actions(c)}
                                     </div>
@@ -139,10 +143,10 @@ export default function Budgets({ categories, monthLabel }: { categories: Catego
                 </Section>
 
                 <Section
-                    title="Kategori Pemasukan"
+                    title={t('Kategori Pemasukan')}
                     action={
                         <Button size="sm" variant="outline" onClick={() => openCat(null, 'income')}>
-                            <Plus /> Kategori
+                            <Plus /> {t('Kategori')}
                         </Button>
                     }
                 >
@@ -161,8 +165,8 @@ export default function Budgets({ categories, monthLabel }: { categories: Catego
             <FormDialog
                 open={budgetFor !== null}
                 onOpenChange={(o) => !o && setBudgetFor(null)}
-                title={`Anggaran ${budgetFor?.name ?? ''}`}
-                description="Batas pengeluaran per bulan. Kosongkan untuk menghapus anggaran."
+                title={t('Anggaran :name', { name: budgetFor?.name ?? '' })}
+                description={t('Batas pengeluaran per bulan. Kosongkan untuk menghapus anggaran.')}
                 onSubmit={saveBudget}
                 processing={saving}
             >
@@ -172,14 +176,16 @@ export default function Budgets({ categories, monthLabel }: { categories: Catego
             <FormDialog
                 open={catOpen}
                 onOpenChange={setCatOpen}
-                title={editingCat ? 'Ubah Kategori' : `Kategori ${catForm.data.type === 'income' ? 'Pemasukan' : 'Pengeluaran'} Baru`}
+                title={
+                    editingCat ? t('Ubah Kategori') : catForm.data.type === 'income' ? t('Kategori Pemasukan Baru') : t('Kategori Pengeluaran Baru')
+                }
                 onSubmit={submitCat}
                 processing={catForm.processing}
             >
-                <Field label="Nama" error={catForm.errors.name} htmlFor="cat-name">
+                <Field label={t('Nama')} error={catForm.errors.name} htmlFor="cat-name">
                     <Input id="cat-name" value={catForm.data.name} onChange={(e) => catForm.setData('name', e.target.value)} />
                 </Field>
-                <Field label="Warna">
+                <Field label={t('Warna')}>
                     <ColorPicker value={catForm.data.color} onChange={(c) => catForm.setData('color', c)} colors={COLORS} />
                 </Field>
             </FormDialog>

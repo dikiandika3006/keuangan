@@ -37,7 +37,7 @@ class BudgetController extends Controller
 
         return Inertia::render('budgets/index', [
             'categories' => $categories,
-            'monthLabel' => now()->locale('id')->translatedFormat('F Y'),
+            'monthLabel' => now()->locale(app()->getLocale())->translatedFormat('F Y'),
         ]);
     }
 
@@ -55,14 +55,14 @@ class BudgetController extends Controller
             );
         }
 
-        return back()->with('success', 'Anggaran disimpan.');
+        return back()->with('success', __('Anggaran disimpan.'));
     }
 
     public function storeCategory(Request $request): RedirectResponse
     {
         $request->user()->categories()->create($this->validatedCategory($request));
 
-        return back()->with('success', 'Kategori ditambahkan.');
+        return back()->with('success', __('Kategori ditambahkan.'));
     }
 
     public function updateCategory(Request $request, Category $category): RedirectResponse
@@ -70,7 +70,7 @@ class BudgetController extends Controller
         $this->ensureOwner($category);
         $category->update($this->validatedCategory($request));
 
-        return back()->with('success', 'Kategori diperbarui.');
+        return back()->with('success', __('Kategori diperbarui.'));
     }
 
     public function destroyCategory(Category $category): RedirectResponse
@@ -78,11 +78,11 @@ class BudgetController extends Controller
         $this->ensureOwner($category);
         // Titipan yang sudah punya transaksi tidak boleh dihapus: transaksinya akan terhitung sebagai pemasukan/pengeluaran pribadi
         if ($category->type === Category::TITIPAN && $category->user->transactions()->where('category_id', $category->id)->exists()) {
-            return back()->withErrors(['category' => 'Titipan ini masih punya transaksi. Hapus atau pindahkan transaksinya dulu.']);
+            return back()->withErrors(['category' => __('Titipan ini masih punya transaksi. Hapus atau pindahkan transaksinya dulu.')]);
         }
         $category->delete();
 
-        return back()->with('success', 'Kategori dihapus.');
+        return back()->with('success', __('Kategori dihapus.'));
     }
 
     private function validatedCategory(Request $request): array

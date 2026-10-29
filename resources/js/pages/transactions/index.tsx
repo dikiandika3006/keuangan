@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { rupiah } from '@/lib/format';
+import { intlLocale, t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { type Category, type Paginated, type Transaction } from '@/types/finance';
@@ -13,7 +14,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight, Pencil, Plus, Receipt, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Transaksi', href: '/transactions' }];
+const breadcrumbs: BreadcrumbItem[] = [{ title: t('Transaksi'), href: '/transactions' }];
 
 interface Props {
     transactions: Paginated<Transaction>;
@@ -30,9 +31,9 @@ function shiftMonth(month: string, delta: number) {
 }
 
 function monthLabel(month: string) {
-    if (month === 'all') return 'Semua waktu';
+    if (month === 'all') return t('Semua waktu');
     const [y, m] = month.split('-').map(Number);
-    return new Date(y, m - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    return new Date(y, m - 1, 1).toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
 }
 
 export default function Transactions({ transactions, totals, filters, accounts, categories }: Props) {
@@ -51,8 +52,8 @@ export default function Transactions({ transactions, totals, filters, accounts, 
 
     useEffect(() => {
         if (search === (filters.search ?? '')) return;
-        const t = setTimeout(() => apply({ search }), 400);
-        return () => clearTimeout(t);
+        const timer = setTimeout(() => apply({ search }), 400);
+        return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
@@ -63,14 +64,14 @@ export default function Transactions({ transactions, totals, filters, accounts, 
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Transaksi" />
+            <Head title={t('Transaksi')} />
             <Page>
                 <PageHeader
-                    title="Transaksi"
-                    description="Catatan pemasukan, pengeluaran, dan transfer antar rekening."
+                    title={t('Transaksi')}
+                    description={t('Catatan pemasukan, pengeluaran, dan transfer antar rekening.')}
                     actions={
                         <Button onClick={() => openForm(null)}>
-                            <Plus /> Catat Transaksi
+                            <Plus /> {t('Catat Transaksi')}
                         </Button>
                     }
                 />
@@ -81,13 +82,14 @@ export default function Transactions({ transactions, totals, filters, accounts, 
                         size="icon"
                         disabled={filters.month === 'all'}
                         onClick={() => apply({ month: shiftMonth(filters.month, -1) })}
+                        aria-label={t('Bulan sebelumnya')}
                     >
                         <ChevronLeft />
                     </Button>
                     <button
                         className="text-sm font-semibold"
                         onClick={() => apply({ month: filters.month === 'all' ? '' : 'all' })}
-                        title="Klik untuk beralih ke semua waktu / bulan ini"
+                        title={t('Klik untuk beralih ke semua waktu / bulan ini')}
                     >
                         {monthLabel(filters.month)}
                     </button>
@@ -96,17 +98,18 @@ export default function Transactions({ transactions, totals, filters, accounts, 
                         size="icon"
                         disabled={filters.month === 'all'}
                         onClick={() => apply({ month: shiftMonth(filters.month, 1) })}
+                        aria-label={t('Bulan berikutnya')}
                     >
                         <ChevronRight />
                     </Button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    <StatCard label="Pemasukan" value={rupiah(totals.income)} tone="positive" />
-                    <StatCard label="Pengeluaran" value={rupiah(totals.expense)} tone="negative" />
+                    <StatCard label={t('Pemasukan')} value={rupiah(totals.income)} tone="positive" />
+                    <StatCard label={t('Pengeluaran')} value={rupiah(totals.expense)} tone="negative" />
                     <StatCard
                         className="col-span-2 sm:col-span-1"
-                        label="Selisih"
+                        label={t('Selisih')}
                         value={rupiah(totals.income - totals.expense)}
                         tone={totals.income - totals.expense < 0 ? 'negative' : 'default'}
                     />
@@ -114,7 +117,7 @@ export default function Transactions({ transactions, totals, filters, accounts, 
 
                 <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                     <Input
-                        placeholder="Cari catatan..."
+                        placeholder={t('Cari catatan...')}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="col-span-2 md:col-span-1"
@@ -124,10 +127,10 @@ export default function Transactions({ transactions, totals, filters, accounts, 
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="any">Semua jenis</SelectItem>
-                            <SelectItem value="income">Pemasukan</SelectItem>
-                            <SelectItem value="expense">Pengeluaran</SelectItem>
-                            <SelectItem value="transfer">Transfer</SelectItem>
+                            <SelectItem value="any">{t('Semua jenis')}</SelectItem>
+                            <SelectItem value="income">{t('Pemasukan')}</SelectItem>
+                            <SelectItem value="expense">{t('Pengeluaran')}</SelectItem>
+                            <SelectItem value="transfer">{t('Transfer')}</SelectItem>
                         </SelectContent>
                     </Select>
                     <Select value={filters.account_id ?? 'any'} onValueChange={(v) => apply({ account_id: v })}>
@@ -135,7 +138,7 @@ export default function Transactions({ transactions, totals, filters, accounts, 
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="any">Semua rekening</SelectItem>
+                            <SelectItem value="any">{t('Semua rekening')}</SelectItem>
                             {accounts.map((a) => (
                                 <SelectItem key={a.id} value={String(a.id)}>
                                     {a.name}
@@ -148,10 +151,10 @@ export default function Transactions({ transactions, totals, filters, accounts, 
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="any">Semua kategori</SelectItem>
+                            <SelectItem value="any">{t('Semua kategori')}</SelectItem>
                             {categories.map((c) => (
                                 <SelectItem key={c.id} value={String(c.id)}>
-                                    {c.name} ({c.type === 'income' ? 'masuk' : 'keluar'})
+                                    {c.name} ({c.type === 'income' ? t('masuk') : c.type === 'titipan' ? t('titipan') : t('keluar')})
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -160,7 +163,7 @@ export default function Transactions({ transactions, totals, filters, accounts, 
 
                 <Section>
                     {transactions.data.length === 0 ? (
-                        <EmptyState icon={Receipt} title="Tidak ada transaksi" description="Coba ubah filter atau catat transaksi baru." />
+                        <EmptyState icon={Receipt} title={t('Tidak ada transaksi')} description={t('Coba ubah filter atau catat transaksi baru.')} />
                     ) : (
                         <div className="divide-y">
                             {transactions.data.map((tx) => (
@@ -172,7 +175,7 @@ export default function Transactions({ transactions, totals, filters, accounts, 
                                             <Button variant="ghost" size="icon" className="size-8" onClick={() => openForm(tx)}>
                                                 <Pencil className="size-4" />
                                             </Button>
-                                            <DeleteButton url={route('transactions.destroy', tx.id)} label="transaksi">
+                                            <DeleteButton url={route('transactions.destroy', tx.id)} label={t('transaksi')}>
                                                 <Button variant="ghost" size="icon" className="size-8 text-red-600">
                                                     <Trash2 className="size-4" />
                                                 </Button>

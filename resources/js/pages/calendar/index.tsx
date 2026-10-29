@@ -2,14 +2,15 @@ import { EmptyState, Page, PageHeader, Section, StatCard, StatusBadge } from '@/
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { compact, formatDate, monthLabel, rupiah, today } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Kalender', href: '/calendar' }];
-const WEEKDAYS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+const breadcrumbs: BreadcrumbItem[] = [{ title: t('Kalender'), href: '/calendar' }];
+const WEEKDAYS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((d) => t(d));
 
 interface CalendarEvent {
     key: string;
@@ -27,9 +28,9 @@ interface CalendarEvent {
 }
 
 const DIRECTION = {
-    out: { icon: ArrowUpRight, chip: 'bg-red-500/10 text-red-700 dark:text-red-300', dot: 'bg-red-500', label: 'Keluar' },
-    in: { icon: ArrowDownLeft, chip: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500', label: 'Masuk' },
-    transfer: { icon: ArrowLeftRight, chip: 'bg-blue-500/10 text-blue-700 dark:text-blue-300', dot: 'bg-blue-500', label: 'Isi dompet' },
+    out: { icon: ArrowUpRight, chip: 'bg-red-500/10 text-red-700 dark:text-red-300', dot: 'bg-red-500', label: t('Keluar') },
+    in: { icon: ArrowDownLeft, chip: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500', label: t('Masuk') },
+    transfer: { icon: ArrowLeftRight, chip: 'bg-blue-500/10 text-blue-700 dark:text-blue-300', dot: 'bg-blue-500', label: t('Isi dompet') },
 };
 
 function shiftMonth(month: string, delta: number) {
@@ -78,40 +79,47 @@ export default function Calendar({ month, events }: { month: string; events: Cal
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Kalender" />
+            <Head title={t('Kalender')} />
             <Page>
                 <PageHeader
-                    title="Kalender Keuangan"
-                    description="Rencana biaya tetap, cicilan, isi dompet, gaji, dan piutang di tanggal jatuh temponya. Klik tanggal untuk melihat rinciannya."
+                    title={t('Kalender Keuangan')}
+                    description={t(
+                        'Rencana biaya tetap, cicilan, isi dompet, gaji, dan piutang di tanggal jatuh temponya. Klik tanggal untuk melihat rinciannya.',
+                    )}
                 />
 
                 <div className="flex items-center justify-between gap-2 rounded-xl border p-2">
-                    <Button variant="ghost" size="icon" onClick={() => go(shiftMonth(month, -1))} aria-label="Bulan sebelumnya">
+                    <Button variant="ghost" size="icon" onClick={() => go(shiftMonth(month, -1))} aria-label={t('Bulan sebelumnya')}>
                         <ChevronLeft />
                     </Button>
-                    <button className="text-sm font-semibold" onClick={() => go(now.slice(0, 7))} title="Kembali ke bulan ini">
+                    <button className="text-sm font-semibold" onClick={() => go(now.slice(0, 7))} title={t('Kembali ke bulan ini')}>
                         {monthLabel(month, 'long')}
-                        {isThisMonth && <span className="text-muted-foreground ml-1 font-normal">(bulan ini)</span>}
+                        {isThisMonth && <span className="text-muted-foreground ml-1 font-normal">{t('(bulan ini)')}</span>}
                     </button>
-                    <Button variant="ghost" size="icon" onClick={() => go(shiftMonth(month, 1))} aria-label="Bulan berikutnya">
+                    <Button variant="ghost" size="icon" onClick={() => go(shiftMonth(month, 1))} aria-label={t('Bulan berikutnya')}>
                         <ChevronRight />
                     </Button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <StatCard label="Rencana Keluar" value={compact(plannedOut)} sub={rupiah(plannedOut)} />
-                    <StatCard label="Sudah Dibayar" value={compact(paidOut)} sub={`sisa ${compact(plannedOut - paidOut)}`} tone="positive" />
-                    <StatCard label="Rencana Masuk" value={compact(plannedIn)} sub={rupiah(plannedIn)} />
+                    <StatCard label={t('Rencana Keluar')} value={compact(plannedOut)} sub={rupiah(plannedOut)} />
                     <StatCard
-                        label="Terlambat"
+                        label={t('Sudah Dibayar')}
+                        value={compact(paidOut)}
+                        sub={t('sisa :amount', { amount: compact(plannedOut - paidOut) })}
+                        tone="positive"
+                    />
+                    <StatCard label={t('Rencana Masuk')} value={compact(plannedIn)} sub={rupiah(plannedIn)} />
+                    <StatCard
+                        label={t('Terlambat')}
                         value={late.length}
-                        sub={late.length ? compact(late.reduce((s, e) => s + e.amount - e.done, 0)) : 'aman'}
+                        sub={late.length ? compact(late.reduce((s, e) => s + e.amount - e.done, 0)) : t('aman')}
                         tone={late.length ? 'negative' : 'default'}
                     />
                 </div>
 
                 {upcoming.length > 0 && (
-                    <Section title="Pengingat 7 hari ke depan">
+                    <Section title={t('Pengingat 7 hari ke depan')}>
                         <EventList events={upcoming} showDate />
                     </Section>
                 )}
@@ -176,10 +184,12 @@ export default function Calendar({ month, events }: { month: string; events: Cal
                                                 </span>
                                             ))}
                                             {list.length > 3 && (
-                                                <span className="text-muted-foreground px-1 text-[10px]">+{list.length - 3} lagi</span>
+                                                <span className="text-muted-foreground px-1 text-[10px]">
+                                                    {t('+:n lagi', { n: list.length - 3 })}
+                                                </span>
                                             )}
                                         </span>
-                                        {allDone && <span className="sr-only">semua beres</span>}
+                                        {allDone && <span className="sr-only">{t('semua beres')}</span>}
                                     </button>
                                 );
                             })}
@@ -191,14 +201,18 @@ export default function Calendar({ month, events }: { month: string; events: Cal
                                 </span>
                             ))}
                             <span className="flex items-center gap-1">
-                                <span className="bg-muted-foreground/40 size-2 rounded-full" /> Sudah beres
+                                <span className="bg-muted-foreground/40 size-2 rounded-full" /> {t('Sudah beres')}
                             </span>
                         </div>
                     </section>
 
                     <Section title={formatDate(selected, { weekday: 'long', day: 'numeric', month: 'long' })}>
                         {selectedEvents.length === 0 ? (
-                            <EmptyState icon={CalendarDays} title="Tidak ada jadwal" description="Tidak ada tagihan atau pemasukan di tanggal ini." />
+                            <EmptyState
+                                icon={CalendarDays}
+                                title={t('Tidak ada jadwal')}
+                                description={t('Tidak ada tagihan atau pemasukan di tanggal ini.')}
+                            />
                         ) : (
                             <EventList events={selectedEvents} />
                         )}
@@ -206,9 +220,9 @@ export default function Calendar({ month, events }: { month: string; events: Cal
                 </div>
 
                 {undated.length > 0 && (
-                    <Section title="Belum ada tanggal">
+                    <Section title={t('Belum ada tanggal')}>
                         <p className="text-muted-foreground mb-2 text-xs">
-                            Isi tanggal bayar di Biaya Bulanan agar muncul di kalender dan masuk pengingat.
+                            {t('Isi tanggal bayar di Biaya Bulanan agar muncul di kalender dan masuk pengingat.')}
                         </p>
                         <EventList events={undated} />
                     </Section>
@@ -238,12 +252,12 @@ function EventList({ events, showDate }: { events: CalendarEvent[]; showDate?: b
                                 <span className="text-muted-foreground block truncate text-xs">
                                     {showDate && `${formatDate(e.date, { day: 'numeric', month: 'short' })} · `}
                                     {e.subtitle ?? DIRECTION[e.direction].label}
-                                    {e.done > 0 && e.done < e.amount && ` · baru ${compact(e.done)}`}
+                                    {e.done > 0 && e.done < e.amount && t(' · baru :amount', { amount: compact(e.done) })}
                                 </span>
                             </span>
                             <span className="shrink-0 text-right">
                                 <span className="block text-sm font-semibold tabular-nums">{compact(e.amount)}</span>
-                                <StatusBadge status={e.status} label={e.status === 'paid' && e.direction === 'in' ? 'Diterima' : undefined} />
+                                <StatusBadge status={e.status} label={e.status === 'paid' && e.direction === 'in' ? t('Diterima') : undefined} />
                             </span>
                         </Link>
                     </li>

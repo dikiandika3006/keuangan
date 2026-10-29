@@ -1,15 +1,16 @@
 import { TransactionForm } from '@/components/finance/transaction-form';
 import { useSidebar } from '@/components/ui/sidebar';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Link, usePage } from '@inertiajs/react';
 import { ArrowLeftRight, LayoutGrid, LineChart, Menu, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 const items = [
-    { title: 'Kondisi', url: '/dashboard', icon: LayoutGrid },
-    { title: 'Transaksi', url: '/transactions', icon: ArrowLeftRight },
+    { title: t('Kondisi'), url: '/dashboard', icon: LayoutGrid },
+    { title: t('Transaksi'), url: '/transactions', icon: ArrowLeftRight },
     null,
-    { title: 'Proyeksi', url: '/projection', icon: LineChart },
+    { title: t('Proyeksi'), url: '/projection', icon: LineChart },
 ];
 
 /** Navigasi bawah + tombol tambah transaksi, hanya tampil di layar kecil. */
@@ -28,7 +29,7 @@ export function MobileNav() {
                                 <button
                                     onClick={() => setOpen(true)}
                                     className="-mt-6 flex size-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg active:scale-95"
-                                    aria-label="Catat transaksi"
+                                    aria-label={t('Catat transaksi')}
                                 >
                                     <Plus className="size-7" />
                                 </button>
@@ -50,7 +51,7 @@ export function MobileNav() {
                     )}
                     <button onClick={() => setOpenMobile(true)} className="text-muted-foreground flex flex-col items-center gap-1 text-[11px]">
                         <Menu className="size-5" />
-                        Lainnya
+                        {t('Menu')}
                     </button>
                 </div>
             </nav>

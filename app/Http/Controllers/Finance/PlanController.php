@@ -36,7 +36,7 @@ class PlanController extends Controller
     {
         $request->user()->recurringItems()->create($this->validated($request));
 
-        return back()->with('success', 'Item rutin ditambahkan.');
+        return back()->with('success', __('Item rutin ditambahkan.'));
     }
 
     public function update(Request $request, RecurringItem $recurringItem): RedirectResponse
@@ -44,7 +44,7 @@ class PlanController extends Controller
         $this->ensureOwner($recurringItem);
         $recurringItem->update($this->validated($request));
 
-        return back()->with('success', 'Item rutin diperbarui.');
+        return back()->with('success', __('Item rutin diperbarui.'));
     }
 
     public function destroy(RecurringItem $recurringItem): RedirectResponse
@@ -52,7 +52,7 @@ class PlanController extends Controller
         $this->ensureOwner($recurringItem);
         $recurringItem->delete();
 
-        return back()->with('success', 'Item rutin dihapus.');
+        return back()->with('success', __('Item rutin dihapus.'));
     }
 
     private function validated(Request $request): array

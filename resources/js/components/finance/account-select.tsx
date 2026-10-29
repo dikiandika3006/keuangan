@@ -1,4 +1,5 @@
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { t } from '@/lib/i18n';
 import { type SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
 
@@ -9,8 +10,8 @@ interface FinanceShared extends SharedData {
 /** Isi dropdown rekening, dikelompokkan: Rekening lalu Dompet Tujuan. */
 export function AccountOptions({ accounts }: { accounts: { id: number; name: string; type?: string }[] }) {
     const groups = [
-        { label: 'Rekening', items: accounts.filter((a) => a.type !== 'pocket') },
-        { label: 'Dompet Tujuan', items: accounts.filter((a) => a.type === 'pocket') },
+        { label: t('Rekening'), items: accounts.filter((a) => a.type !== 'pocket') },
+        { label: t('Dompet Tujuan'), items: accounts.filter((a) => a.type === 'pocket') },
     ].filter((g) => g.items.length > 0);
 
     // Tanpa dompet tidak perlu judul kelompok
@@ -39,7 +40,7 @@ export function AccountOptions({ accounts }: { accounts: { id: number; name: str
 export function AccountSelect({
     value,
     onChange,
-    placeholder = 'Pilih rekening',
+    placeholder = t('Pilih rekening'),
 }: {
     value: string;
     onChange: (v: string) => void;

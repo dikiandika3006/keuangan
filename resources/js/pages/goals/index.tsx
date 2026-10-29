@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { COLORS, compact, formatDate, monthlyNeeded, monthsUntil, percent, PRIORITIES, rupiah } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { type Goal } from '@/types/finance';
@@ -13,7 +14,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { CheckCircle2, Pencil, Plus, Target, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Target', href: '/goals' }];
+const breadcrumbs: BreadcrumbItem[] = [{ title: t('Target'), href: '/goals' }];
 
 type FormData = { name: string; target_amount: number | ''; current_amount: number | ''; target_date: string; priority: number; color: string };
 
@@ -74,30 +75,34 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Target Keuangan" />
+            <Head title={t('Target Keuangan')} />
             <Page>
                 <PageHeader
-                    title="Target Keuangan"
-                    description="Tujuan yang ingin dicapai: dana darurat, DP rumah, menikah, pendidikan, pensiun, dll."
+                    title={t('Target Keuangan')}
+                    description={t('Tujuan yang ingin dicapai: dana darurat, DP rumah, menikah, pendidikan, pensiun, dll.')}
                     actions={
                         <Button onClick={() => openForm(null)}>
-                            <Plus /> Tambah Target
+                            <Plus /> {t('Tambah Target')}
                         </Button>
                     }
                 />
 
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     <StatCard
-                        label="Total Terkumpul"
+                        label={t('Total Terkumpul')}
                         value={compact(totalSaved)}
-                        sub={`dari ${compact(totalTarget)} (${Math.round(percent(totalSaved, totalTarget))}%)`}
+                        sub={t('dari :target (:pct%)', { target: compact(totalTarget), pct: Math.round(percent(totalSaved, totalTarget)) })}
                     />
-                    <StatCard label="Target Aktif" value={active.length} sub={`${goals.length - active.length} tercapai`} />
-                    <StatCard label="Perlu Disisihkan" value={compact(totalNeeded)} sub="per bulan untuk semua target" />
+                    <StatCard label={t('Target Aktif')} value={active.length} sub={t(':n tercapai', { n: goals.length - active.length })} />
+                    <StatCard label={t('Perlu Disisihkan')} value={compact(totalNeeded)} sub={t('per bulan untuk semua target')} />
                     <StatCard
-                        label="Surplus Rata-rata"
+                        label={t('Surplus Rata-rata')}
                         value={compact(monthlySurplus)}
-                        sub={monthlySurplus >= totalNeeded ? 'Cukup untuk semua target ✓' : `Kurang ${compact(totalNeeded - monthlySurplus)}/bln`}
+                        sub={
+                            monthlySurplus >= totalNeeded
+                                ? t('Cukup untuk semua target ✓')
+                                : t('Kurang :amount/bln', { amount: compact(totalNeeded - monthlySurplus) })
+                        }
                         tone={monthlySurplus >= totalNeeded ? 'positive' : 'negative'}
                     />
                 </div>
@@ -105,9 +110,9 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
                 {goals.length === 0 ? (
                     <EmptyState
                         icon={Target}
-                        title="Belum ada target"
-                        description="Target membantu kamu tahu berapa yang harus ditabung tiap bulan."
-                        action={<Button onClick={() => openForm(null)}>Buat Target Pertama</Button>}
+                        title={t('Belum ada target')}
+                        description={t('Target membantu kamu tahu berapa yang harus ditabung tiap bulan.')}
+                        action={<Button onClick={() => openForm(null)}>{t('Buat Target Pertama')}</Button>}
                     />
                 ) : (
                     <div className="grid gap-3 md:grid-cols-2">
@@ -126,21 +131,24 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
                                                     <CheckCircle2 className="size-4 shrink-0 text-emerald-500" />
                                                 ) : (
                                                     <Badge variant="outline" className="shrink-0 text-[10px]">
-                                                        Prioritas {PRIORITIES[g.priority]}
+                                                        {t('Prioritas :p', { p: PRIORITIES[g.priority] })}
                                                     </Badge>
                                                 )}
                                             </div>
                                             <div className="text-muted-foreground text-xs">
                                                 {g.target_date
-                                                    ? `Target ${formatDate(g.target_date, { month: 'long', year: 'numeric' })} · ${months} bln lagi`
-                                                    : 'Tanpa tenggat'}
+                                                    ? t('Target :date · :n bln lagi', {
+                                                          date: formatDate(g.target_date, { month: 'long', year: 'numeric' }),
+                                                          n: months ?? 0,
+                                                      })
+                                                    : t('Tanpa tenggat')}
                                             </div>
                                         </div>
                                         <div className="flex shrink-0">
                                             <Button variant="ghost" size="icon" className="size-8" onClick={() => openForm(g)}>
                                                 <Pencil className="size-4" />
                                             </Button>
-                                            <DeleteButton url={route('goals.destroy', g.id)} label={`target ${g.name}`}>
+                                            <DeleteButton url={route('goals.destroy', g.id)} label={t('target :name', { name: g.name })}>
                                                 <Button variant="ghost" size="icon" className="size-8 text-red-600">
                                                     <Trash2 className="size-4" />
                                                 </Button>
@@ -150,17 +158,19 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
 
                                     <div className="mt-3 flex items-end justify-between gap-2">
                                         <div className="text-lg font-bold tabular-nums">{rupiah(g.current_amount)}</div>
-                                        <div className="text-muted-foreground text-xs tabular-nums">dari {rupiah(g.target_amount)}</div>
+                                        <div className="text-muted-foreground text-xs tabular-nums">
+                                            {t('dari :amount', { amount: rupiah(g.target_amount) })}
+                                        </div>
                                     </div>
                                     <ProgressBar className="mt-2 h-2.5" value={p} color={g.color} />
 
                                     <div className="mt-3 flex items-center justify-between gap-2">
                                         <div className={cn('text-xs', need !== null && need > monthlySurplus && !done && 'text-amber-600')}>
                                             {done
-                                                ? 'Target tercapai 🎉'
+                                                ? t('Target tercapai 🎉')
                                                 : need !== null
-                                                  ? `Sisihkan ${rupiah(need)}/bln`
-                                                  : `Kurang ${rupiah(g.target_amount - g.current_amount)}`}
+                                                  ? t('Sisihkan :amount/bln', { amount: rupiah(need) })
+                                                  : t('Kurang :amount', { amount: rupiah(g.target_amount - g.current_amount) })}
                                         </div>
                                         <Button
                                             size="sm"
@@ -171,7 +181,7 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
                                                 setDepositValue('');
                                             }}
                                         >
-                                            Update dana
+                                            {t('Update dana')}
                                         </Button>
                                     </div>
                                 </div>
@@ -184,26 +194,26 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
             <FormDialog
                 open={open}
                 onOpenChange={setOpen}
-                title={editing ? 'Ubah Target' : 'Target Baru'}
+                title={editing ? t('Ubah Target') : t('Target Baru')}
                 onSubmit={submit}
                 processing={form.processing}
             >
-                <Field label="Nama target" error={form.errors.name} htmlFor="goal-name">
+                <Field label={t('Nama target')} error={form.errors.name} htmlFor="goal-name">
                     <Input
                         id="goal-name"
                         value={form.data.name}
                         onChange={(e) => form.setData('name', e.target.value)}
-                        placeholder="Dana darurat, DP rumah..."
+                        placeholder={t('Dana darurat, DP rumah...')}
                     />
                 </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Jumlah target" error={form.errors.target_amount}>
+                    <Field label={t('Jumlah target')} error={form.errors.target_amount}>
                         <MoneyInput value={form.data.target_amount} onChange={(v) => form.setData('target_amount', v)} />
                     </Field>
-                    <Field label="Sudah terkumpul" error={form.errors.current_amount}>
+                    <Field label={t('Sudah terkumpul')} error={form.errors.current_amount}>
                         <MoneyInput value={form.data.current_amount} onChange={(v) => form.setData('current_amount', v)} />
                     </Field>
-                    <Field label="Tanggal target" error={form.errors.target_date} htmlFor="goal-date">
+                    <Field label={t('Tanggal target')} error={form.errors.target_date} htmlFor="goal-date">
                         <Input
                             id="goal-date"
                             type="date"
@@ -211,7 +221,7 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
                             onChange={(e) => form.setData('target_date', e.target.value)}
                         />
                     </Field>
-                    <Field label="Prioritas" error={form.errors.priority}>
+                    <Field label={t('Prioritas')} error={form.errors.priority}>
                         <Select value={String(form.data.priority)} onValueChange={(v) => form.setData('priority', Number(v))}>
                             <SelectTrigger>
                                 <SelectValue />
@@ -226,7 +236,7 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
                         </Select>
                     </Field>
                 </div>
-                <Field label="Warna">
+                <Field label={t('Warna')}>
                     <ColorPicker value={form.data.color} onChange={(c) => form.setData('color', c)} colors={COLORS} />
                 </Field>
             </FormDialog>
@@ -234,8 +244,8 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
             <FormDialog
                 open={depositFor !== null}
                 onOpenChange={(o) => !o && setDepositFor(null)}
-                title={`Update dana: ${depositFor?.name ?? ''}`}
-                description={`Terkumpul saat ini ${rupiah(depositFor?.current_amount ?? 0)}`}
+                title={t('Update dana: :name', { name: depositFor?.name ?? '' })}
+                description={t('Terkumpul saat ini :amount', { amount: rupiah(depositFor?.current_amount ?? 0) })}
                 onSubmit={submitDeposit}
             >
                 <div className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1">
@@ -246,7 +256,7 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
                             className={cn('rounded-md py-1.5 text-sm font-medium', depositMode === m && 'bg-background shadow-sm')}
                             onClick={() => setDepositMode(m)}
                         >
-                            {m === 'in' ? 'Tambah dana' : 'Tarik dana'}
+                            {m === 'in' ? t('Tambah dana') : t('Tarik dana')}
                         </button>
                     ))}
                 </div>

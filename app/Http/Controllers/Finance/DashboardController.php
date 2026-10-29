@@ -35,7 +35,7 @@ class DashboardController extends Controller
         $categories = $user->categories()->where('type', 'expense')->get()->keyBy('id');
 
         $expenseByCategory = $spentByCategory->map(fn ($total, $id) => [
-            'name' => $categories[$id]->name ?? 'Tanpa kategori',
+            'name' => $categories[$id]->name ?? __('Tanpa kategori'),
             'color' => $categories[$id]->color ?? '#94a3b8',
             'total' => (int) $total,
         ])->sortByDesc('total')->values();

@@ -60,7 +60,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('backup', function () {
         $ok = Artisan::call('keuangan:backup') === 0;
 
-        return back()->with('success', $ok ? 'Backup database tersimpan di storage/app/backups.' : 'Backup gagal: '.trim(Artisan::output()));
+        return back()->with('success', $ok ? __('Backup database tersimpan di storage/app/backups.') : __('Backup gagal: :error', ['error' => trim(Artisan::output())]));
     })->name('backup.run');
 
     Route::get('recap', RecapController::class)->name('recap.index');
