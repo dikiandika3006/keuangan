@@ -7,6 +7,7 @@ use App\Http\Controllers\Finance\CalendarController;
 use App\Http\Controllers\Finance\DashboardController;
 use App\Http\Controllers\Finance\DebtController;
 use App\Http\Controllers\Finance\ExportController;
+use App\Http\Controllers\Finance\FireController;
 use App\Http\Controllers\Finance\GoalController;
 use App\Http\Controllers\Finance\ImportController;
 use App\Http\Controllers\Finance\MonthlyBillController;
@@ -92,7 +93,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('monthly/{recurringItem}/renew', [MonthlyBillController::class, 'renew'])->name('monthly.renew');
     Route::post('monthly/{recurringItem}/confirm-end', [MonthlyBillController::class, 'confirmEnd'])->name('monthly.confirm-end');
 
-    Route::inertia('calculator/fire', 'calculator/fire')->name('calculator.fire');
+    Route::get('calculator/fire', FireController::class)->name('calculator.fire');
     Route::inertia('calculator/kpr', 'calculator/kpr')->name('calculator.kpr');
 
     Route::get('plan', [PlanController::class, 'index'])->name('plan.index');

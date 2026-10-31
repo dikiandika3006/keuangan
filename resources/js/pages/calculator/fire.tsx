@@ -7,15 +7,25 @@ import { fire, type FireInput } from '@/lib/calculators';
 import { compact, rupiah } from '@/lib/format';
 import { intlLocale, t } from '@/lib/i18n';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
-import { Flag, PiggyBank, RotateCcw, Target, Wallet } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Deferred, Head } from '@inertiajs/react';
+import { Flag, PiggyBank, RotateCcw, Target, TrendingUp, Wallet } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Area, AreaChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: t('Kalkulator FIRE'), href: '/calculator/fire' }];
 const STORAGE_KEY = 'keuangan.calculator.fire';
 const tooltipStyle = { backgroundColor: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 };
 const MILESTONES = [5, 10, 15, 20, 25, 30];
+const TAB_KEY = 'keuangan.calculator.fire.tab';
+
+type Tab = 'simulation' | 'actual';
+
+interface HistoryMonth {
+    month: string;
+    label: string;
+    net_worth: number;
+}
 
 const DEFAULTS: FireInput = {
     initial: 0,
@@ -26,13 +36,28 @@ const DEFAULTS: FireInput = {
     withdrawalRate: 5,
 };
 
+function percent(v: number, digits = 0): string {
+    return `${v.toFixed(digits).replace('.', ',')}%`;
+}
+
+function fireDateFrom(months: number | null): Date | null {
+    return months !== null ? new Date(new Date().getFullYear(), new Date().getMonth() + months, 1) : null;
+}
+
 function duration(months: number): string {
     const y = Math.floor(months / 12);
     const m = months % 12;
     return [y && t(':n tahun', { n: y }), m && t(':n bulan', { n: m })].filter(Boolean).join(' ') || t('Sekarang');
 }
 
-export default function FireCalculator() {
+export default function FireCalculator({ history }: { history?: HistoryMonth[] }) {
+    const [tab, setTab] = useState<Tab>(() => {
+        try {
+            return localStorage.getItem(TAB_KEY) === 'actual' ? 'actual' : 'simulation';
+        } catch {
+            return 'simulation';
+        }
+    });
     const [a, setA] = useState<FireInput>(() => {
         try {
             return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') };
@@ -49,10 +74,18 @@ export default function FireCalculator() {
         }
     }, [a]);
 
+    useEffect(() => {
+        try {
+            localStorage.setItem(TAB_KEY, tab);
+        } catch {
+            /* abaikan */
+        }
+    }, [tab]);
+
     const set = <K extends keyof FireInput>(k: K, v: FireInput[K]) => setA((prev) => ({ ...prev, [k]: v }));
     const r = useMemo(() => fire(a), [a]);
     const chartData = r.years.map((y) => ({ label: t('Th :n', { n: y.year }), deposited: y.deposited, interest: y.interest }));
-    const fireDate = r.fireMonth !== null ? new Date(new Date().getFullYear(), new Date().getMonth() + r.fireMonth, 1) : null;
+    const fireDate = fireDateFrom(r.fireMonth);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -62,6 +95,28 @@ export default function FireCalculator() {
                     title={t('Kalkulator FIRE')}
                     description={t('Berapa dana yang harus terkumpul supaya bebas finansial, dan berapa lama kamu bisa mencapainya.')}
                 />
+
+                <div className="inline-flex w-fit gap-1 rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800">
+                    {(
+                        [
+                            ['simulation', t('Simulasi')],
+                            ['actual', t('Realisasi')],
+                        ] as const
+                    ).map(([value, label]) => (
+                        <button
+                            key={value}
+                            onClick={() => setTab(value)}
+                            className={cn(
+                                'rounded-md px-3.5 py-1.5 text-sm transition-colors',
+                                tab === value
+                                    ? 'bg-white shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
+                                    : 'text-neutral-500 hover:bg-neutral-200/60 hover:text-black dark:text-neutral-400 dark:hover:bg-neutral-700/60',
+                            )}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
 
                 <div className="grid gap-4 lg:grid-cols-3">
                     <Section
@@ -100,6 +155,11 @@ export default function FireCalculator() {
                         </div>
                     </Section>
 
+                    {tab === 'actual' ? (
+                        <Deferred data="history" fallback={<div className="text-muted-foreground p-4 text-sm lg:col-span-2">{t('Memuat...')}</div>}>
+                            <Actual history={history ?? []} input={a} target={r.target} />
+                        </Deferred>
+                    ) : (
                     <div className="grid min-w-0 gap-4 lg:col-span-2">
                         <div className="grid grid-cols-2 gap-3">
                             <StatCard label={t('Pengeluaran / tahun')} value={rupiah(r.annualExpense)} icon={Wallet} />
@@ -157,8 +217,10 @@ export default function FireCalculator() {
                             </div>
                         </Section>
                     </div>
+                    )}
                 </div>
 
+                {tab === 'simulation' && (
                 <Section title={t('Ringkasan per Periode')}>
                     <div className="-mx-4 overflow-x-auto">
                         <table className="w-full min-w-[560px] text-sm tabular-nums">
@@ -184,7 +246,7 @@ export default function FireCalculator() {
                                                 <td className="px-2 py-2 text-right">{rupiah(y.interest)}</td>
                                                 <td className="px-2 py-2 text-right font-medium">{rupiah(y.balance)}</td>
                                                 <td className="px-2 py-2 text-right">
-                                                    {y.deposited > 0 ? `${((y.interest / y.deposited) * 100).toFixed(1).replace('.', ',')}%` : '-'}
+                                                    {y.deposited > 0 ? percent((y.interest / y.deposited) * 100, 1) : '-'}
                                                 </td>
                                                 <td className="px-4 py-2 text-right">
                                                     {r.target > 0 ? `${Math.min(100, (y.balance / r.target) * 100).toFixed(0)}%` : '-'}
@@ -196,7 +258,113 @@ export default function FireCalculator() {
                         </table>
                     </div>
                 </Section>
+                )}
             </Page>
         </AppLayout>
+    );
+}
+
+/** Kekayaan bersih nyata per bulan dibanding rencana (simulasi yang dimulai dari saldo bulan pertama). */
+function Actual({ history, input, target }: { history: HistoryMonth[]; input: FireInput; target: number }) {
+    const growth = (input.rate / 100 / 12) * (1 - input.tax / 100);
+    const rows = history.map((h, i) => ({
+        ...h,
+        plan: i === 0 ? h.net_worth : 0,
+        change: i === 0 ? null : h.net_worth - history[i - 1].net_worth,
+    }));
+    for (let i = 1; i < rows.length; i++) rows[i].plan = (rows[i - 1].plan + input.monthlySaving) * (1 + growth);
+
+    const last = rows[rows.length - 1];
+    if (!last) return null;
+    const progress = target > 0 ? (last.net_worth / target) * 100 : 0;
+    const eta = fire({ ...input, initial: Math.max(0, last.net_worth) }).fireMonth;
+    const etaDate = fireDateFrom(eta);
+    const avgChange = rows.length > 1 ? (last.net_worth - rows[0].net_worth) / (rows.length - 1) : 0;
+    const signed = (v: number) => `${v >= 0 ? '+' : ''}${rupiah(v)}`;
+    const toneClass = (v: number) => (v >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400');
+
+    return (
+        <>
+            <div className="grid min-w-0 gap-4 lg:col-span-2">
+                <div className="grid grid-cols-2 gap-3">
+                    <StatCard
+                        label={t('Dana sekarang')}
+                        value={rupiah(last.net_worth)}
+                        sub={t('Kekayaan bersih :month', { month: last.label })}
+                        icon={Wallet}
+                    />
+                    <StatCard
+                        label={t('Progres target')}
+                        value={target > 0 ? percent(Math.min(100, progress), 1) : '-'}
+                        sub={t('Kurang :amount', { amount: rupiah(Math.max(0, target - last.net_worth)) })}
+                        icon={Target}
+                        tone={progress >= 100 ? 'positive' : undefined}
+                    />
+                    <StatCard
+                        label={t('Estimasi FIRE dari posisi sekarang')}
+                        value={eta !== null ? duration(eta) : t('> 100 tahun')}
+                        sub={etaDate && etaDate.toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' })}
+                        icon={Flag}
+                        tone={eta !== null ? 'positive' : 'negative'}
+                    />
+                    <StatCard
+                        label={t('Rata-rata kenaikan / bulan')}
+                        value={rupiah(avgChange)}
+                        sub={t('Rencana setoran :amount', { amount: rupiah(input.monthlySaving) })}
+                        icon={TrendingUp}
+                        tone={avgChange >= input.monthlySaving ? 'positive' : 'negative'}
+                    />
+                </div>
+
+                <Section title={t('Realisasi vs Rencana')}>
+                    <div className="h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={rows} margin={{ left: -10, right: 4, top: 4 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={24} />
+                                <YAxis tickFormatter={compact} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={56} />
+                                <Tooltip formatter={(v) => rupiah(Number(v))} contentStyle={tooltipStyle} />
+                                <Legend wrapperStyle={{ fontSize: 12 }} />
+                                <Line dataKey="plan" name={t('Rencana')} stroke="#8b5cf6" strokeDasharray="4 4" dot={false} />
+                                <Line dataKey="net_worth" name={t('Realisasi')} stroke="#10b981" strokeWidth={2} dot={{ r: 2 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Section>
+            </div>
+
+            <Section title={t('Progres per Bulan')} className="lg:col-span-3">
+                <div className="-mx-4 overflow-x-auto">
+                    <table className="w-full min-w-[560px] text-sm tabular-nums">
+                        <thead className="text-muted-foreground text-xs">
+                            <tr className="border-b">
+                                <th className="px-4 py-2 text-left font-medium">{t('Bulan')}</th>
+                                <th className="px-2 py-2 text-right font-medium">{t('Saldo realisasi')}</th>
+                                <th className="px-2 py-2 text-right font-medium">{t('Kenaikan')}</th>
+                                <th className="px-2 py-2 text-right font-medium">{t('Rencana')}</th>
+                                <th className="px-2 py-2 text-right font-medium">{t('Selisih')}</th>
+                                <th className="px-4 py-2 text-right font-medium">{t('Progres target')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {[...rows].reverse().map((m) => (
+                                <tr key={m.month} className="border-b">
+                                    <td className="px-4 py-2">{m.label}</td>
+                                    <td className="px-2 py-2 text-right font-medium">{rupiah(m.net_worth)}</td>
+                                    <td className={cn('px-2 py-2 text-right', m.change !== null && toneClass(m.change))}>
+                                        {m.change !== null ? signed(m.change) : '-'}
+                                    </td>
+                                    <td className="text-muted-foreground px-2 py-2 text-right">{rupiah(m.plan)}</td>
+                                    <td className={cn('px-2 py-2 text-right', toneClass(m.net_worth - m.plan))}>{signed(m.net_worth - m.plan)}</td>
+                                    <td className="px-4 py-2 text-right">
+                                        {target > 0 ? percent(Math.min(100, (m.net_worth / target) * 100), 1) : '-'}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </Section>
+        </>
     );
 }

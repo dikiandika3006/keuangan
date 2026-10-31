@@ -12,7 +12,7 @@ class TitipanTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_titipan_stays_in_balance_but_not_counted_as_own_income_or_expense()
+    public function test_titipan_is_recorded_without_account_and_only_on_titipan_page()
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -29,14 +29,16 @@ class TitipanTest extends TestCase
         $tx('expense', 2_000_000, $titipan->id);
         $tx('expense', 100_000, $makan->id);
 
+        // Rekening yang terkirim diabaikan: titipan tidak memakai rekening, saldo BCA hanya berkurang belanja makan
+        $this->assertSame(2, $user->transactions()->whereNull('account_id')->count());
         $finance = new FinanceService($user);
-        $this->assertSame(3_900_000, (int) $finance->accounts()->firstWhere('id', $bca->id)->balance);
+        $this->assertSame(900_000, (int) $finance->accounts()->firstWhere('id', $bca->id)->balance);
 
         $fund = $finance->heldFunds()->first();
         $this->assertSame([5_000_000, 2_000_000, 3_000_000], [$fund['in'], $fund['out'], $fund['balance']]);
 
         $position = $finance->position();
-        $this->assertSame(3_000_000, $position['held']);
+        $this->assertSame(0, $position['held']);
         $this->assertSame(900_000, $position['spendable']);
         $this->assertSame(900_000, $position['net_worth']);
 
@@ -52,6 +54,17 @@ class TitipanTest extends TestCase
             ->component('titipan/index')
             ->where('funds.0.balance', 3_000_000)
             ->count('transactions', 2));
+
+        // Daftar Transaksi & pilihan kategorinya tanpa titipan
+        $this->get('/transactions')->assertInertia(fn ($p) => $p
+            ->where('transactions.total', 1)
+            ->where('categories', fn ($c) => collect($c)->where('type', Category::TITIPAN)->isEmpty()));
+
+        // Titipan lama yang masih tercatat di rekening tetap dikurangkan dari uang siap pakai
+        $user->transactions()->create(['type' => 'income', 'account_id' => $bca->id, 'category_id' => $titipan->id, 'amount' => 400_000, 'date' => now()->toDateString()]);
+        $position = (new FinanceService($user))->position();
+        $this->assertSame(400_000, $position['held']);
+        $this->assertSame(900_000, $position['spendable']);
     }
 
     public function test_titipan_with_transactions_cannot_be_deleted()

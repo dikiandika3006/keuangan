@@ -26,7 +26,8 @@ export interface Category {
 export interface Transaction {
     id: number;
     type: TxType;
-    account_id: number;
+    /** null untuk titipan (dicatat tanpa rekening) */
+    account_id: number | null;
     to_account_id: number | null;
     category_id: number | null;
     amount: number;

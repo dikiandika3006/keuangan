@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Rule as AutoRule;
 use App\Models\Transaction;
 use App\Services\SuggestionService;
@@ -28,6 +29,7 @@ class TransactionController extends Controller
         $month = $filters['month'] ?? now()->format('Y-m');
 
         $query = $user->transactions()
+            ->ownMoney()
             ->with(['account:id,name,color', 'toAccount:id,name', 'category:id,name,color,system_key', 'tags:id,name,color'])
             ->when($month !== 'all', function ($q) use ($month) {
                 $start = CarbonImmutable::createFromFormat('Y-m-d', $month.'-01');
@@ -49,7 +51,7 @@ class TransactionController extends Controller
             ],
             'filters' => [...$filters, 'month' => $month],
             'accounts' => $user->accounts()->orderBy('name')->get(['id', 'name']),
-            'categories' => $user->categories()->orderBy('name')->get(['id', 'name', 'type', 'color']),
+            'categories' => $user->categories()->where('type', '!=', Category::TITIPAN)->orderBy('name')->get(['id', 'name', 'type', 'color']),
             'tags' => $user->tags()->orderBy('name')->get(['id', 'name', 'color']),
         ]);
     }
@@ -184,9 +186,13 @@ class TransactionController extends Controller
             ->where(fn ($q) => $q->where('is_archived', false)->orWhereIn('id', $keep ?: [0]));
         $splitting = ! $existing && $request->filled('splits');
 
+        // Titipan dicatat tanpa rekening: hanya muncul di halaman Titipan, tidak mengubah saldo rekening
+        $titipan = $request->filled('category_id') && $request->user()->categories()
+            ->whereKey($request->input('category_id'))->where('type', Category::TITIPAN)->exists();
+
         $data = $request->validate([
-            'type' => ['required', 'in:income,expense,transfer'],
-            'account_id' => ['required', $ownAccount],
+            'type' => ['required', $titipan ? 'in:income,expense' : 'in:income,expense,transfer'],
+            'account_id' => [$titipan ? 'nullable' : 'required', $ownAccount],
             'to_account_id' => ['nullable', 'required_if:type,transfer', 'different:account_id', $ownAccount],
             // Kategori boleh kosong bila nanti diisi aturan otomatis; dicek lagi setelah aturan diterapkan
             'category_id' => ['nullable', Rule::exists('categories', 'id')->where('user_id', $userId)],
@@ -201,7 +207,10 @@ class TransactionController extends Controller
         ]);
         unset($data['attachment'], $data['remove_attachment'], $data['tags']);
 
-        if ($data['type'] === 'transfer') {
+        if ($titipan) {
+            $data['account_id'] = null;
+            $data['to_account_id'] = null;
+        } elseif ($data['type'] === 'transfer') {
             $data['category_id'] = null;
         } else {
             $data['to_account_id'] = null;

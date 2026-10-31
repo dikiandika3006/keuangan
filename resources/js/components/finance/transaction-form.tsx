@@ -76,7 +76,7 @@ export function TransactionForm({
         if (transaction) {
             form.setData({
                 type: transaction.type,
-                account_id: String(transaction.account_id),
+                account_id: transaction.account_id ? String(transaction.account_id) : '',
                 to_account_id: transaction.to_account_id ? String(transaction.to_account_id) : '',
                 category_id: transaction.category_id ? String(transaction.category_id) : '',
                 amount: transaction.amount,
@@ -125,6 +125,8 @@ export function TransactionForm({
     const filteredCategories = categories.filter((c) => c.type === data.type);
     // Titipan bisa masuk (diterima) maupun keluar (diteruskan)
     const titipanCategories = categories.filter((c) => c.type === 'titipan');
+    // Titipan dicatat tanpa rekening dan hanya tampil di halaman Titipan
+    const isTitipan = titipanCategories.some((c) => String(c.id) === data.category_id);
     const splitTotal = data.splits.reduce((s, x) => s + (Number(x.amount) || 0), 0);
     const setSplit = (i: number, patch: Partial<FormData['splits'][number]>) =>
         setData(
@@ -140,7 +142,7 @@ export function TransactionForm({
             onSubmit={submit}
             processing={form.processing}
         >
-            {accounts.length === 0 ? (
+            {accounts.length === 0 && !isTitipan ? (
                 <p className="text-muted-foreground text-sm">
                     {t('Belum ada rekening.')}{' '}
                     <Link href={route('accounts.index')} className="text-primary underline" onClick={() => onOpenChange(false)}>
@@ -150,14 +152,14 @@ export function TransactionForm({
                 </p>
             ) : (
                 <>
-                    <div className="bg-muted grid grid-cols-3 gap-1 rounded-lg p-1">
-                        {TYPES.map((ty) => (
+                    <div className={cn('bg-muted grid gap-1 rounded-lg p-1', isTitipan ? 'grid-cols-2' : 'grid-cols-3')}>
+                        {TYPES.filter((ty) => !isTitipan || ty.value !== 'transfer').map((ty) => (
                             <button
                                 key={ty.value}
                                 type="button"
                                 data-active={data.type === ty.value}
                                 className={cn('rounded-md px-2 py-1.5 text-sm font-medium transition', ty.className)}
-                                onClick={() => setData((d) => ({ ...d, type: ty.value, category_id: '' }))}
+                                onClick={() => setData((d) => ({ ...d, type: ty.value, category_id: isTitipan ? d.category_id : '' }))}
                             >
                                 {ty.label}
                             </button>
@@ -171,16 +173,18 @@ export function TransactionForm({
                     )}
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label={data.type === 'transfer' ? t('Dari rekening') : t('Rekening')} error={errors.account_id}>
-                            <Select value={data.account_id} onValueChange={(v) => setData('account_id', v)}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder={t('Pilih rekening')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <AccountOptions accounts={accounts} />
-                                </SelectContent>
-                            </Select>
-                        </Field>
+                        {!isTitipan && (
+                            <Field label={data.type === 'transfer' ? t('Dari rekening') : t('Rekening')} error={errors.account_id}>
+                                <Select value={data.account_id} onValueChange={(v) => setData('account_id', v)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder={t('Pilih rekening')} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <AccountOptions accounts={accounts} />
+                                    </SelectContent>
+                                </Select>
+                            </Field>
+                        )}
 
                         {data.type === 'transfer' ? (
                             <Field label={t('Ke rekening')} error={errors.to_account_id}>
@@ -223,10 +227,10 @@ export function TransactionForm({
                                         )}
                                     </SelectContent>
                                 </Select>
-                                {titipanCategories.some((c) => String(c.id) === data.category_id) && (
+                                {isTitipan && (
                                     <p className="text-muted-foreground text-xs">
                                         {data.type === 'income' ? t('Uang titipan diterima') : t('Titipan diteruskan/dipakai')} ·{' '}
-                                        {t('tidak masuk rekap & anggaran')}
+                                        {t('tanpa rekening, hanya tercatat di halaman Titipan')}
                                     </p>
                                 )}
                             </Field>
@@ -242,7 +246,7 @@ export function TransactionForm({
                         </Field>
                     </div>
 
-                    {!transaction && data.type !== 'transfer' && (
+                    {!transaction && data.type !== 'transfer' && !isTitipan && (
                         <div className="grid gap-2 rounded-lg border p-3">
                             <label className="flex items-center gap-2 text-sm font-medium">
                                 <input

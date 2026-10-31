@@ -10,8 +10,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Dana titipan / uang usaha yang cuma lewat rekening: tercatat di saldo rekening,
- * tapi tidak dihitung sebagai pemasukan/pengeluaran pribadi. Sisa saldonya dilacak per titipan.
+ * Dana titipan / uang usaha yang cuma lewat: dicatat tanpa rekening (hanya di halaman ini),
+ * tidak dihitung sebagai pemasukan/pengeluaran pribadi. Sisa saldonya dilacak per titipan.
  */
 class TitipanController extends Controller
 {
@@ -26,7 +26,7 @@ class TitipanController extends Controller
                 ->whereIn('category_id', $funds->pluck('id'))
                 ->with(['account:id,name', 'category:id,name,color'])
                 ->latest('date')->latest('id')
-                ->limit(200)
+                ->limit(1000)
                 ->get(),
             'type' => Category::TITIPAN,
         ]);

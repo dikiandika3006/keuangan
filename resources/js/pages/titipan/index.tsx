@@ -28,6 +28,16 @@ interface Fund {
 
 type TxDefaults = { type: 'income' | 'expense'; category_id: string };
 
+/** Riwayat terbaru di atas; saldo setelah tiap transaksi dihitung mundur dari saldo saat ini. */
+function withRunningBalance(current: number, txs: Transaction[]) {
+    let balance = current;
+    return txs.map((tx) => {
+        const row = { tx, balance };
+        balance -= tx.type === 'income' ? tx.amount : -tx.amount;
+        return row;
+    });
+}
+
 export default function Titipan({ funds, transactions, type }: { funds: Fund[]; transactions: Transaction[]; type: string }) {
     const { errors } = usePage<SharedData & { errors: Record<string, string> }>().props;
     const held = funds.reduce((s, f) => s + Math.max(0, f.balance), 0);
@@ -74,7 +84,7 @@ export default function Titipan({ funds, transactions, type }: { funds: Fund[]; 
                 <PageHeader
                     title={t('Titipan & Dana Lewat')}
                     description={t(
-                        'Uang orang lain atau uang usaha yang lewat rekeningmu. Saldonya tetap di rekening, tapi tidak dihitung sebagai pemasukan/pengeluaran pribadi.',
+                        'Uang orang lain atau uang usaha yang cuma lewat. Dicatat tanpa rekening dan hanya di halaman ini, jadi tidak memengaruhi saldo rekening maupun pemasukan/pengeluaran pribadi.',
                     )}
                     actions={
                         <Button onClick={() => openFund(null)}>
@@ -84,7 +94,7 @@ export default function Titipan({ funds, transactions, type }: { funds: Fund[]; 
                 />
 
                 <div className="grid grid-cols-2 gap-3">
-                    <StatCard label={t('Titipan di Rekeningmu')} value={rupiah(held)} sub={t('Bukan uang siap pakai')} icon={Handshake} />
+                    <StatCard label={t('Sisa Titipan')} value={rupiah(held)} sub={t('Uang orang lain yang masih kamu pegang')} icon={Handshake} />
                     <StatCard
                         label={t('Kamu Talangi')}
                         value={rupiah(advanced)}
@@ -190,8 +200,17 @@ export default function Titipan({ funds, transactions, type }: { funds: Fund[]; 
                                             </button>
                                             {open && (
                                                 <div className="divide-y border-t px-4">
-                                                    {txs.map((t) => (
-                                                        <TransactionRow key={t.id} tx={t} onClick={() => editTx(t)} />
+                                                    {withRunningBalance(f.balance, txs).map(({ tx, balance }) => (
+                                                        <TransactionRow
+                                                            key={tx.id}
+                                                            tx={tx}
+                                                            onClick={() => editTx(tx)}
+                                                            actions={
+                                                                <span className="text-muted-foreground w-24 shrink-0 text-right text-xs tabular-nums">
+                                                                    {t('saldo :amount', { amount: rupiah(balance) })}
+                                                                </span>
+                                                            }
+                                                        />
                                                     ))}
                                                 </div>
                                             )}
@@ -207,13 +226,14 @@ export default function Titipan({ funds, transactions, type }: { funds: Fund[]; 
                     <ol className="text-muted-foreground list-decimal space-y-1 pl-5 text-sm">
                         <li>{t('Buat titipan per sumber, mis. “Titipan Ibu”, “Dana Usaha”, “Uang Arisan”.')}</li>
                         <li>
-                            {t('Uang masuk ke rekeningmu →')} <b>{t('Terima')}</b>.{' '}
-                            {t('Saldo rekening bertambah, tapi tidak dihitung sebagai pemasukan.')}
+                            {t('Uang titipan diterima →')} <b>{t('Terima')}</b>. {t('Cukup isi tanggal & nominal, tanpa rekening.')}
                         </li>
                         <li>
                             {t('Uang diteruskan atau dibelanjakan untuk yang menitip →')} <b>{t('Teruskan / Pakai')}</b>.
                         </li>
-                        <li>{t('Sisa titipan dikurangkan dari Uang Siap Pakai, kekayaan bersih, dan saldo awal proyeksi.')}</li>
+                        <li>
+                            {t('Saldo rekening, Uang Siap Pakai, rekap, dan kekayaan bersih tidak terpengaruh. Mutasi lengkap ada di Lihat riwayat.')}
+                        </li>
                     </ol>
                 </Section>
             </Page>

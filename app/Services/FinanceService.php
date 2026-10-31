@@ -113,9 +113,10 @@ class FinanceService
 
     /**
      * Saldo tiap titipan (kategori bertipe titipan): masuk − keluar sampai tanggal tertentu.
-     * Saldo positif = uang orang lain yang masih ada di rekening kita.
+     * Saldo positif = uang orang lain yang masih dipegang. Dengan $inAccountsOnly hanya transaksi yang
+     * tercatat di rekening (titipan lama); titipan baru dicatat tanpa rekening sehingga tidak ada di saldo rekening.
      */
-    public function heldFunds(?string $asOf = null): Collection
+    public function heldFunds(?string $asOf = null, bool $inAccountsOnly = false): Collection
     {
         $categories = $this->user->categories()->where('type', Category::TITIPAN)->orderBy('name')->get();
         if ($categories->isEmpty()) {
@@ -124,6 +125,7 @@ class FinanceService
 
         $totals = $this->user->transactions()
             ->whereIn('category_id', $categories->pluck('id'))
+            ->when($inAccountsOnly, fn ($q) => $q->whereNotNull('account_id'))
             ->where('date', '<=', $asOf ?? now()->toDateString())
             ->selectRaw('category_id, type, SUM(amount) as total, COUNT(*) as count, MAX(date) as last_date')
             ->groupBy('category_id', 'type')
@@ -161,8 +163,8 @@ class FinanceService
         // Dompet Tujuan (kesehatan, tabungan anak, dll.) sudah dialokasikan, bukan uang siap pakai
         $pockets = (int) $accounts->where('type', 'pocket')->where('is_emergency_fund', false)->sum('balance');
 
-        // Uang titipan/usaha yang masih mengendap di rekening: milik orang lain
-        $held = (int) $this->heldFunds($asOf)->sum(fn ($f) => max(0, $f['balance']));
+        // Uang titipan/usaha yang masih mengendap di rekening: milik orang lain (titipan tanpa rekening tidak ada di saldo)
+        $held = (int) $this->heldFunds($asOf, true)->sum(fn ($f) => max(0, $f['balance']));
         // Tanpa rekening bertanda dana darurat: pakai uang likuid milik sendiri yang belum dialokasikan
         $emergency = $flagged->isNotEmpty() ? (int) $flagged->sum('balance') : max(0, $liquid - $pockets - $held);
 

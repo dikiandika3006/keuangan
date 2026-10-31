@@ -29,5 +29,13 @@
     "Sisa titipan dikurangkan dari Uang Siap Pakai, kekayaan bersih, dan saldo awal proyeksi.": "Remaining held money is subtracted from Spendable Money, net worth, and the projection starting balance.",
     "Ubah Titipan": "Edit Held Fund",
     "mis. Titipan Ibu, Dana Usaha": "e.g. Mom's money, Business funds",
-    "Warna": "Color"
+    "Warna": "Color",
+    "tanpa rekening, hanya tercatat di halaman Titipan": "no account, recorded only on the Held Funds page",
+    "Uang orang lain atau uang usaha yang cuma lewat. Dicatat tanpa rekening dan hanya di halaman ini, jadi tidak memengaruhi saldo rekening maupun pemasukan/pengeluaran pribadi.": "Other people's money or business money just passing through. Recorded without an account and only on this page, so it doesn't affect account balances or personal income/expenses.",
+    "Sisa Titipan": "Held Balance",
+    "Uang orang lain yang masih kamu pegang": "Other people's money you still hold",
+    "saldo :amount": "balance :amount",
+    "Uang titipan diterima →": "Held money received →",
+    "Cukup isi tanggal & nominal, tanpa rekening.": "Just fill in the date & amount, no account needed.",
+    "Saldo rekening, Uang Siap Pakai, rekap, dan kekayaan bersih tidak terpengaruh. Mutasi lengkap ada di Lihat riwayat.": "Account balances, Spendable Money, recap, and net worth are not affected. The full history is under View history."
 }

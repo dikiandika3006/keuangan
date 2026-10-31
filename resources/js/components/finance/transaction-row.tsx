@@ -42,7 +42,8 @@ export function TransactionRow({ tx, actions, onClick }: { tx: Transaction; acti
                     )}
                 </div>
                 <div className="text-muted-foreground truncate text-xs">
-                    {formatDate(tx.date)} · {tx.account?.name}
+                    {formatDate(tx.date)}
+                    {tx.account && ` · ${tx.account.name}`}
                     {tx.note ? ` · ${tx.note}` : ''}
                     {tx.tags?.map((tag) => (
                         <span key={tag.id} className="ml-1" style={{ color: tag.color }}>
