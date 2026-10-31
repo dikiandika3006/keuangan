@@ -49,7 +49,7 @@ class HandleInertiaRequests extends Middleware
             // Dipakai form transaksi cepat yang tersedia di semua halaman
             'finance' => fn () => $request->user() ? [
                 'accounts' => $request->user()->accounts()->where('is_archived', false)->orderBy('name')->get(['id', 'name', 'type']),
-                'categories' => $request->user()->categories()->orderBy('name')->get(['id', 'name', 'type', 'color']),
+                'categories' => $request->user()->categories()->orderBy('name')->get(['id', 'name', 'type', 'color', 'icon']),
                 'tags' => $request->user()->tags()->orderBy('name')->pluck('name'),
             ] : null,
             'flash' => [

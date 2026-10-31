@@ -32,7 +32,7 @@ class Category extends Model
      */
     public const INTERNAL_MOVES = ['asset_deposit', 'asset_withdrawal', 'receivable_principal', 'debt_principal'];
 
-    protected $fillable = ['name', 'type', 'color', 'system_key'];
+    protected $fillable = ['name', 'type', 'color', 'icon', 'system_key'];
 
     protected function casts(): array
     {

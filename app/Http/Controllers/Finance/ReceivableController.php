@@ -156,8 +156,16 @@ class ReceivableController extends Controller
             'note' => ['nullable', 'string', 'max:255'],
         ]);
 
+        // Perubahan tarikan harus setelah bulan mulai; kalau sejak awal, cukup ubah "Tarik pokok per bulan"
+        if (! empty($data['withdrawal_change_month']) && $data['withdrawal_change_month'] <= $data['start_month']) {
+            throw ValidationException::withMessages(['withdrawal_change_month' => __('Bulan perubahan tarikan harus setelah bulan mulai.')]);
+        }
+
         $data['start_month'] .= '-01';
-        $data['withdrawal_change_month'] = ! empty($data['withdrawal_change_month']) ? $data['withdrawal_change_month'].'-01' : null;
+        // Perubahan tarikan hanya berlaku bila bulan dan nominal pengganti sama-sama diisi
+        $changes = ! empty($data['withdrawal_change_month']) && ($data['withdrawal_after'] ?? null) !== null;
+        $data['withdrawal_change_month'] = $changes ? $data['withdrawal_change_month'].'-01' : null;
+        $data['withdrawal_after'] = $changes ? $data['withdrawal_after'] : null;
 
         return $data;
     }

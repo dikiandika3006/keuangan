@@ -4,7 +4,7 @@ import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
     return (
@@ -20,6 +20,76 @@ export function PageHeader({ title, description, actions }: { title: string; des
 
 export function Page({ children }: { children: ReactNode }) {
     return <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col gap-4 p-4 pb-24 md:gap-6 md:p-6 md:pb-6">{children}</div>;
+}
+
+/**
+ * Nominal rupiah dengan gaya seragam: "Rp" kecil & pudar, angka tegas. Teks lain ditampilkan apa adanya.
+ */
+export function Money({ value }: { value: ReactNode }) {
+    if (typeof value !== 'string') return <>{value}</>;
+    const m = value.match(/^([+−-]?)\s?Rp\s?(.+)$/);
+    if (!m) return <>{value}</>;
+    return (
+        <>
+            {m[1]}
+            <span className="mr-0.5 text-[0.62em] font-medium opacity-60">Rp</span>
+            {m[2]}
+        </>
+    );
+}
+
+/** Angka yang bergulir halus ke nilai baru (mis. saldo setelah transaksi disimpan). */
+export function AnimatedNumber({ value, format }: { value: number; format: (v: number) => string }) {
+    const [shown, setShown] = useState(value);
+    const from = useRef(value);
+    const [flash, setFlash] = useState<'up' | 'down' | null>(null);
+
+    useEffect(() => {
+        const start = from.current;
+        if (start === value) return;
+        setFlash(value > start ? 'up' : 'down');
+        const begin = performance.now();
+        let frame = 0;
+        const step = (now: number) => {
+            const p = Math.min(1, (now - begin) / 700);
+            const eased = 1 - Math.pow(1 - p, 3);
+            setShown(Math.round(start + (value - start) * eased));
+            if (p < 1) frame = requestAnimationFrame(step);
+            else from.current = value;
+        };
+        frame = requestAnimationFrame(step);
+        const timer = setTimeout(() => setFlash(null), 1200);
+        return () => {
+            cancelAnimationFrame(frame);
+            clearTimeout(timer);
+            from.current = value;
+        };
+    }, [value]);
+
+    return (
+        <span className={cn('rounded transition-colors duration-700', flash === 'up' && 'bg-emerald-500/15', flash === 'down' && 'bg-red-500/10')}>
+            <Money value={format(shown)} />
+        </span>
+    );
+}
+
+/** Kerangka abu berdenyut selama data dimuat. */
+export function SkeletonBlock({ className }: { className?: string }) {
+    return <div className={cn('bg-muted animate-pulse rounded-lg', className)} />;
+}
+
+export function SkeletonCards({ count = 4, className }: { count?: number; className?: string }) {
+    return (
+        <div className={cn('grid grid-cols-2 gap-3 lg:grid-cols-4', className)}>
+            {Array.from({ length: count }, (_, i) => (
+                <div key={i} className="bg-card rounded-xl border p-4 shadow-sm">
+                    <SkeletonBlock className="h-3 w-1/2" />
+                    <SkeletonBlock className="mt-3 h-6 w-3/4" />
+                    <SkeletonBlock className="mt-2 h-3 w-2/3" />
+                </div>
+            ))}
+        </div>
+    );
 }
 
 export function StatCard({
@@ -38,10 +108,23 @@ export function StatCard({
     className?: string;
 }) {
     return (
-        <div className={cn('bg-card min-w-0 rounded-xl border p-3 sm:p-4', className)}>
-            <div className="text-muted-foreground flex items-center justify-between text-xs font-medium sm:text-sm">
+        <div className={cn('bg-card min-w-0 rounded-xl border p-3 shadow-sm sm:p-4', className)}>
+            <div className="text-muted-foreground flex items-center justify-between gap-2 text-xs font-medium sm:text-sm">
                 <span>{label}</span>
-                {Icon && <Icon className="size-4" />}
+                {Icon && (
+                    <span
+                        className={cn(
+                            'flex size-7 shrink-0 items-center justify-center rounded-lg',
+                            tone === 'positive'
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                : tone === 'negative'
+                                  ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                                  : 'bg-muted',
+                        )}
+                    >
+                        <Icon className="size-4" />
+                    </span>
+                )}
             </div>
             <div
                 className={cn(
@@ -50,7 +133,7 @@ export function StatCard({
                     tone === 'negative' && 'text-red-600 dark:text-red-400',
                 )}
             >
-                {value}
+                <Money value={value} />
             </div>
             {sub && <div className="text-muted-foreground mt-1 text-xs">{sub}</div>}
         </div>
@@ -59,7 +142,7 @@ export function StatCard({
 
 export function Section({ title, action, children, className }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
     return (
-        <section className={cn('bg-card rounded-xl border', className)}>
+        <section className={cn('bg-card rounded-xl border shadow-sm', className)}>
             {(title || action) && (
                 <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
                     <h2 className="font-semibold">{title}</h2>
@@ -95,8 +178,13 @@ export function EmptyState({
 }) {
     return (
         <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-            <div className="bg-muted rounded-full p-3">
-                <Icon className="text-muted-foreground size-6" />
+            {/* Ilustrasi sederhana: ikon dalam lingkaran berlapis bernuansa warna utama */}
+            <div className="relative mb-1 flex size-20 items-center justify-center">
+                <div className="bg-primary/5 absolute inset-0 rounded-full" />
+                <div className="bg-primary/10 absolute inset-3 rounded-full" />
+                <div className="bg-card text-primary relative flex size-11 items-center justify-center rounded-full border shadow-sm">
+                    <Icon className="size-5" />
+                </div>
             </div>
             <p className="font-medium">{title}</p>
             {description && <p className="text-muted-foreground max-w-sm text-sm">{description}</p>}

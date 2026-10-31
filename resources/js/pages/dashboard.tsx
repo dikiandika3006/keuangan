@@ -1,6 +1,6 @@
 import { TransactionForm } from '@/components/finance/transaction-form';
 import { TransactionRow } from '@/components/finance/transaction-row';
-import { EmptyState, Page, PageHeader, ProgressBar, Section, StatCard, StatusBadge } from '@/components/finance/ui';
+import { AnimatedNumber, EmptyState, Page, PageHeader, ProgressBar, Section, StatCard, StatusBadge } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { ACCOUNT_TYPES, compact, daysFromToday, formatDate, monthLabel, monthsUntil, percent, rupiah } from '@/lib/format';
@@ -27,9 +27,9 @@ import {
     ArrowUpRight,
     CalendarClock,
     CheckCircle2,
+    ChevronDown,
     HelpCircle,
     Hourglass,
-    Landmark,
     Plus,
     Receipt,
     ShieldCheck,
@@ -114,6 +114,14 @@ export default function Dashboard(props: Props) {
     const net = thisMonth.income - thisMonth.expense;
     const label = scoreLabel(health.score);
     const totalExpense = expenseByCategory.reduce((s, c) => s + c.total, 0);
+    // Tagihan lewat jatuh tempo diringkas jadi satu baris supaya agenda tidak penuh merah
+    const late = trace.agenda.filter((i) => i.status === 'late');
+    // Peringatan paling penting saja yang tampil; sisanya dilipat supaya atas halaman tidak penuh merah
+    const [showAlerts, setShowAlerts] = useState(false);
+    const alertsShown = showAlerts ? trace.alerts : trace.alerts.slice(0, 2);
+    const [showLate, setShowLate] = useState(false);
+    const agendaShown = late.length >= 2 && !showLate ? trace.agenda.filter((i) => i.status !== 'late') : trace.agenda;
+    const netWorthChange = netWorth.length >= 2 ? netWorth[netWorth.length - 1].net_worth - netWorth[netWorth.length - 2].net_worth : null;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -191,7 +199,7 @@ export default function Dashboard(props: Props) {
 
                 {trace.alerts.length > 0 && (
                     <ul className="space-y-2">
-                        {trace.alerts.map((a, i) => (
+                        {alertsShown.map((a, i) => (
                             <li key={i}>
                                 <Link
                                     href={a.url}
@@ -211,84 +219,129 @@ export default function Dashboard(props: Props) {
                                 </Link>
                             </li>
                         ))}
+                        {trace.alerts.length > 2 && (
+                            <li>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAlerts((v) => !v)}
+                                    className="text-muted-foreground hover:text-foreground flex items-center gap-1 px-1 text-xs"
+                                >
+                                    <ChevronDown className={cn('size-3.5 transition', showAlerts && 'rotate-180')} />
+                                    {showAlerts ? t('Ringkas peringatan') : t(':n peringatan lainnya', { n: trace.alerts.length - 2 })}
+                                </button>
+                            </li>
+                        )}
                     </ul>
                 )}
 
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                    <StatCard
-                        label={t('Kekayaan Bersih')}
-                        value={rupiah(position.net_worth)}
-                        sub={t('Aset :assets − Utang :debt', { assets: compact(position.total_assets), debt: compact(position.total_debt) })}
-                        icon={Landmark}
-                        tone={position.net_worth < 0 ? 'negative' : 'default'}
-                    />
-                    <StatCard
-                        label={t('Uang Siap Pakai')}
-                        value={rupiah(position.spendable)}
-                        sub={
-                            position.held > 0
-                                ? t('Tanpa titipan :held · Piutang :rcv', { held: compact(position.held), rcv: compact(position.receivables) })
-                                : t('Piutang :rcv · Aset :assets', {
-                                      rcv: compact(position.receivables),
-                                      assets: compact(position.other_assets + position.investment),
-                                  })
-                        }
-                        icon={Wallet}
-                    />
-                    <StatCard
-                        label={t('Dana Darurat')}
-                        value={rupiah(position.emergency_fund)}
-                        sub={
-                            emergencyTarget.amount > 0 ? (
-                                <span className="block">
-                                    <ProgressBar className="mb-1" value={percent(position.emergency_fund, emergencyTarget.amount)} color="#10b981" />
-                                    {t(':n dari :target bln pengeluaran', {
-                                        n: (position.emergency_fund / emergencyTarget.monthly).toLocaleString(intlLocale, {
-                                            maximumFractionDigits: 1,
-                                        }),
-                                        target: emergencyTarget.months,
-                                    })}
-                                    {position.emergency_fund < emergencyTarget.amount &&
-                                        t(' · kurang :amount', { amount: compact(emergencyTarget.amount - position.emergency_fund) })}
-                                    {!position.emergency_fund_flagged && t(' · tandai rekening dana darurat')}
-                                </span>
-                            ) : undefined
-                        }
-                        icon={ShieldCheck}
-                    />
-                    <StatCard
-                        label={t('Runway Tanpa Gaji')}
-                        value={
-                            summary
-                                ? summary.runway_months === null
-                                    ? '∞'
-                                    : t(':n bln', { n: summary.runway_months.toLocaleString(intlLocale) })
-                                : '-'
-                        }
-                        sub={
-                            summary
-                                ? summary.monthly_burn > 0
-                                    ? t('kas :cash ÷ defisit :burn/bln', { cash: compact(summary.liquid_now), burn: compact(summary.monthly_burn) })
-                                    : t('tidak defisit walau tanpa gaji')
-                                : t('Buka Proyeksi untuk membuat skenario')
-                        }
-                        icon={Hourglass}
-                        tone={summary?.runway_months != null && summary.runway_months < 3 ? 'negative' : 'default'}
-                    />
-                    <StatCard
-                        label={t('Pemasukan Bulan Ini')}
-                        value={rupiah(thisMonth.income)}
-                        sub={t('Rata-rata :amount/bln', { amount: compact(averages.income) })}
-                        icon={ArrowDownRight}
-                        tone="positive"
-                    />
-                    <StatCard
-                        label={t('Pengeluaran Bulan Ini')}
-                        value={rupiah(thisMonth.expense)}
-                        sub={<span className={net < 0 ? 'text-red-500' : ''}>{t('Sisa :amount', { amount: rupiah(net) })}</span>}
-                        icon={ArrowUpRight}
-                        tone="negative"
-                    />
+                <div className="grid gap-3 lg:grid-cols-3">
+                    {/* Kartu utama: uang yang benar-benar bisa dipakai, plus ringkasan bulan ini */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 p-5 text-white shadow-lg shadow-emerald-900/20 lg:col-span-2 dark:from-emerald-700 dark:via-emerald-800 dark:to-teal-900">
+                        <div className="pointer-events-none absolute -top-16 -right-16 size-48 rounded-full bg-white/10" />
+                        <div className="pointer-events-none absolute -bottom-20 -left-10 size-40 rounded-full bg-white/5" />
+                        <div className="relative">
+                            <div className="flex items-center gap-2 text-sm text-emerald-50/90">
+                                <Wallet className="size-4" /> {t('Uang Siap Pakai')}
+                            </div>
+                            <div className="mt-1 text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
+                                <AnimatedNumber value={position.spendable} format={rupiah} />
+                            </div>
+                            <div className="mt-1 text-xs text-emerald-50/80">
+                                {position.held > 0
+                                    ? t('Tanpa titipan :held · Piutang :rcv', { held: compact(position.held), rcv: compact(position.receivables) })
+                                    : t('Piutang :rcv · Aset :assets', {
+                                          rcv: compact(position.receivables),
+                                          assets: compact(position.other_assets + position.investment),
+                                      })}
+                            </div>
+
+                            <div className="mt-4 grid grid-cols-3 gap-2">
+                                <div className="min-w-0 rounded-xl bg-white/10 p-2.5 backdrop-blur-sm">
+                                    <div className="text-[11px] leading-tight text-emerald-50/80">{t('Kekayaan Bersih')}</div>
+                                    <div className="truncate text-sm font-semibold tabular-nums sm:text-base">{compact(position.net_worth)}</div>
+                                    {netWorthChange !== null && (
+                                        <div className="truncate text-[11px] text-emerald-50/80" title={t('vs bulan lalu')}>
+                                            {netWorthChange >= 0 ? '▲' : '▼'} {compact(Math.abs(netWorthChange))}
+                                        </div>
+                                    )}
+                                </div>
+                                <Link
+                                    href={route('recap.index')}
+                                    className="min-w-0 rounded-xl bg-white/10 p-2.5 backdrop-blur-sm transition hover:bg-white/15"
+                                >
+                                    <div className="flex items-center gap-1 text-[11px] leading-tight text-emerald-50/80">
+                                        <ArrowDownRight className="size-3" /> {t('Masuk bulan ini')}
+                                    </div>
+                                    <div className="truncate text-sm font-semibold tabular-nums sm:text-base">{compact(thisMonth.income)}</div>
+                                    <div className="truncate text-[11px] text-emerald-50/80">
+                                        {t('rata² :amount', { amount: compact(averages.income) })}
+                                    </div>
+                                </Link>
+                                <Link
+                                    href={route('recap.index')}
+                                    className="min-w-0 rounded-xl bg-white/10 p-2.5 backdrop-blur-sm transition hover:bg-white/15"
+                                >
+                                    <div className="flex items-center gap-1 text-[11px] leading-tight text-emerald-50/80">
+                                        <ArrowUpRight className="size-3" /> {t('Keluar bulan ini')}
+                                    </div>
+                                    <div className="truncate text-sm font-semibold tabular-nums sm:text-base">{compact(thisMonth.expense)}</div>
+                                    <div className={cn('truncate text-[11px]', net < 0 ? 'font-medium text-amber-200' : 'text-emerald-50/80')}>
+                                        {t('sisa :amount', { amount: compact(net) })}
+                                    </div>
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+                        <StatCard
+                            label={t('Dana Darurat')}
+                            value={rupiah(position.emergency_fund)}
+                            sub={
+                                emergencyTarget.amount > 0 ? (
+                                    <span className="block">
+                                        <ProgressBar
+                                            className="mb-1"
+                                            value={percent(position.emergency_fund, emergencyTarget.amount)}
+                                            color="#10b981"
+                                        />
+                                        {t(':n dari :target bln pengeluaran', {
+                                            n: (position.emergency_fund / emergencyTarget.monthly).toLocaleString(intlLocale, {
+                                                maximumFractionDigits: 1,
+                                            }),
+                                            target: emergencyTarget.months,
+                                        })}
+                                        {position.emergency_fund < emergencyTarget.amount &&
+                                            t(' · kurang :amount', { amount: compact(emergencyTarget.amount - position.emergency_fund) })}
+                                        {!position.emergency_fund_flagged && t(' · tandai rekening dana darurat')}
+                                    </span>
+                                ) : undefined
+                            }
+                            icon={ShieldCheck}
+                        />
+                        <StatCard
+                            label={t('Runway Tanpa Gaji')}
+                            value={
+                                summary
+                                    ? summary.runway_months === null
+                                        ? '∞'
+                                        : t(':n bln', { n: summary.runway_months.toLocaleString(intlLocale) })
+                                    : '-'
+                            }
+                            sub={
+                                summary
+                                    ? summary.monthly_burn > 0
+                                        ? t('kas :cash ÷ defisit :burn/bln', {
+                                              cash: compact(summary.liquid_now),
+                                              burn: compact(summary.monthly_burn),
+                                          })
+                                        : t('tidak defisit walau tanpa gaji')
+                                    : t('Buka Proyeksi untuk membuat skenario')
+                            }
+                            icon={Hourglass}
+                            tone={summary?.runway_months != null && summary.runway_months < 3 ? 'negative' : 'default'}
+                        />
+                    </div>
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-3">
@@ -301,7 +354,32 @@ export default function Dashboard(props: Props) {
                             />
                         ) : (
                             <ul className="divide-y">
-                                {trace.agenda.map((item) => {
+                                {late.length >= 2 && (
+                                    <li>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowLate((v) => !v)}
+                                            className="flex w-full items-center gap-3 py-2 text-left"
+                                        >
+                                            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-600">
+                                                <AlertTriangle className="size-4" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="text-sm font-medium">{t(':n tagihan terlambat', { n: late.length })}</div>
+                                                <div className="text-muted-foreground text-xs">
+                                                    {showLate ? t('Ketuk untuk ringkas') : t('Ketuk untuk lihat rinciannya')}
+                                                </div>
+                                            </div>
+                                            <div className="text-right text-sm font-semibold text-red-600 tabular-nums dark:text-red-400">
+                                                {compact(late.reduce((sum, i) => sum + i.amount, 0))}
+                                            </div>
+                                            <ChevronDown
+                                                className={cn('text-muted-foreground size-4 shrink-0 transition', showLate && 'rotate-180')}
+                                            />
+                                        </button>
+                                    </li>
+                                )}
+                                {agendaShown.map((item) => {
                                     const days = daysFromToday(item.due_date);
                                     return (
                                         <li key={`${item.kind}-${item.id}`}>

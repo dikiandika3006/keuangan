@@ -45,7 +45,7 @@ class BudgetController extends Controller
             ->where(fn ($q) => $q->whereNull('system_key')->orWhereNotIn('system_key', Category::INTERNAL_MOVES))
             ->orderBy('type')->orderBy('name')->get()
             ->map(fn (Category $c) => [
-                ...$c->only(['id', 'name', 'type', 'color']),
+                ...$c->only(['id', 'name', 'type', 'color', 'icon']),
                 'budget' => $budgets[$c->id] ?? null,
                 'fixed' => (int) ($fixed[$c->id] ?? 0),
                 'spent' => (int) ($spent[$c->id] ?? 0),
@@ -108,6 +108,7 @@ class BudgetController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'type' => ['required', 'in:income,expense,'.Category::TITIPAN],
             'color' => ['required', 'string', 'max:20'],
+            'icon' => ['nullable', 'string', 'max:30', 'regex:/^[a-z-]+$/'],
         ]);
     }
 }

@@ -83,7 +83,7 @@ class DashboardController extends Controller
             'reviewReady' => now()->day <= 7 && $user->transactions()->whereBetween('date', [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()])->exists()
                 ? now()->subMonth()->format('Y-m') : null,
             'recentTransactions' => $user->transactions()->ownMoney()
-                ->with(['account:id,name', 'toAccount:id,name', 'category:id,name,color'])
+                ->with(['account:id,name', 'toAccount:id,name', 'category:id,name,color,icon'])
                 ->latest('date')->latest('id')->limit(6)->get(),
         ]);
     }

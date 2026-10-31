@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
 import { t } from '@/lib/i18n';
-import { loginWithPasskey, passkeySupported } from '@/lib/webauthn';
+import { loginWithPasskey, passkeyRemembered, passkeySupported } from '@/lib/webauthn';
 
 type LoginForm = {
     email: string;
@@ -27,7 +27,26 @@ interface LoginProps {
 
 export default function Login({ status, canResetPassword, canRegister }: LoginProps) {
     const biometric = passkeySupported();
+    // Perangkat yang sudah pernah memakai sidik jari: tombol biometrik jadi pilihan utama di atas form
+    const preferBiometric = biometric && passkeyRemembered();
     const [passkeyError, setPasskeyError] = useState('');
+    const biometricButton = (
+        <div className="grid gap-2">
+            <Button
+                type="button"
+                variant={preferBiometric ? 'default' : 'outline'}
+                size={preferBiometric ? 'lg' : 'default'}
+                className="w-full"
+                onClick={() => {
+                    setPasskeyError('');
+                    loginWithPasskey(setPasskeyError).catch(() => setPasskeyError(t('Login biometrik dibatalkan.')));
+                }}
+            >
+                <Fingerprint /> {t('Masuk dengan sidik jari / Face ID')}
+            </Button>
+            <InputError message={passkeyError} />
+        </div>
+    );
     const { data, setData, post, processing, errors, reset } = useForm<LoginForm>({
         email: '',
         password: '',
@@ -46,6 +65,16 @@ export default function Login({ status, canResetPassword, canRegister }: LoginPr
             <Head title={t('Masuk|login')} />
 
             <form className="flex flex-col gap-6" onSubmit={submit}>
+                {preferBiometric && (
+                    <>
+                        {biometricButton}
+                        <div className="text-muted-foreground flex items-center gap-3 text-xs">
+                            <span className="bg-border h-px flex-1" />
+                            {t('atau pakai kata sandi')}
+                            <span className="bg-border h-px flex-1" />
+                        </div>
+                    </>
+                )}
                 <div className="grid gap-6">
                     <div className="grid gap-2">
                         <Label htmlFor="email">{t('Username atau email')}</Label>
@@ -53,7 +82,7 @@ export default function Login({ status, canResetPassword, canRegister }: LoginPr
                             id="email"
                             type="text"
                             required
-                            autoFocus
+                            autoFocus={!preferBiometric}
                             tabIndex={1}
                             autoComplete="username"
                             value={data.email}
@@ -90,26 +119,17 @@ export default function Login({ status, canResetPassword, canRegister }: LoginPr
                         <Label htmlFor="remember">{t('Ingat saya')}</Label>
                     </div>
 
-                    <Button type="submit" className="mt-4 w-full" tabIndex={4} disabled={processing}>
+                    <Button
+                        type="submit"
+                        variant={preferBiometric ? 'outline' : 'default'}
+                        className="mt-2 w-full"
+                        tabIndex={4}
+                        disabled={processing}
+                    >
                         {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
                         {t('Masuk|login')}
                     </Button>
-                    {biometric && (
-                        <>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="w-full"
-                                onClick={() => {
-                                    setPasskeyError('');
-                                    loginWithPasskey(setPasskeyError).catch(() => setPasskeyError(t('Login biometrik dibatalkan.')));
-                                }}
-                            >
-                                <Fingerprint /> {t('Masuk dengan sidik jari / Face ID')}
-                            </Button>
-                            <InputError message={passkeyError} />
-                        </>
-                    )}
+                    {biometric && !preferBiometric && biometricButton}
                 </div>
 
                 {canRegister && (

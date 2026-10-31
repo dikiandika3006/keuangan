@@ -1,3 +1,4 @@
+import { SwipeActions } from '@/components/finance/swipe-actions';
 import { TransactionForm } from '@/components/finance/transaction-form';
 import { TransactionRow } from '@/components/finance/transaction-row';
 import { DeleteButton, EmptyState, Page, PageHeader, Section, StatCard } from '@/components/finance/ui';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
-import { rupiah } from '@/lib/format';
+import { compact, daysFromToday, formatDate, rupiah } from '@/lib/format';
 import { intlLocale, t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
@@ -35,6 +36,25 @@ function monthLabel(month: string) {
     if (month === 'all') return t('Semua waktu');
     const [y, m] = month.split('-').map(Number);
     return new Date(y, m - 1, 1).toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
+}
+
+/** Transaksi dikelompokkan per tanggal (urutan dari server sudah terbaru dulu). */
+function groupByDate(items: Transaction[]) {
+    const groups: { date: string; items: Transaction[]; net: number }[] = [];
+    for (const tx of items) {
+        let g = groups[groups.length - 1];
+        if (!g || g.date !== tx.date) groups.push((g = { date: tx.date, items: [], net: 0 }));
+        g.items.push(tx);
+        g.net += tx.type === 'income' ? tx.amount : tx.type === 'expense' ? -tx.amount : 0;
+    }
+    return groups;
+}
+
+function dayLabel(date: string) {
+    const d = daysFromToday(date);
+    if (d === 0) return t('Hari ini');
+    if (d === -1) return t('Kemarin');
+    return formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 export default function Transactions({ transactions, totals, filters, accounts, categories, tags }: Props) {
@@ -186,26 +206,76 @@ export default function Transactions({ transactions, totals, filters, accounts, 
                     {transactions.data.length === 0 ? (
                         <EmptyState icon={Receipt} title={t('Tidak ada transaksi')} description={t('Coba ubah filter atau catat transaksi baru.')} />
                     ) : (
-                        <div className="divide-y">
-                            {transactions.data.map((tx) => (
-                                <TransactionRow
-                                    key={tx.id}
-                                    tx={tx}
-                                    actions={
-                                        <div className="flex shrink-0">
-                                            <Button variant="ghost" size="icon" className="size-8" onClick={() => openForm(tx)}>
-                                                <Pencil className="size-4" />
-                                            </Button>
-                                            <DeleteButton url={route('transactions.destroy', tx.id)} label={t('transaksi')}>
-                                                <Button variant="ghost" size="icon" className="size-8 text-red-600">
-                                                    <Trash2 className="size-4" />
-                                                </Button>
-                                            </DeleteButton>
+                        <>
+                            <div className="-mx-4 -my-4 overflow-clip rounded-xl">
+                                {groupByDate(transactions.data).map(({ date, items, net }) => (
+                                    <div key={date}>
+                                        {/* Judul tanggal menempel saat digulir, dengan selisih masuk−keluar hari itu */}
+                                        <div className="bg-muted/80 text-muted-foreground sticky top-0 z-10 flex items-center justify-between px-4 py-1.5 text-xs font-medium backdrop-blur">
+                                            <span>{dayLabel(date)}</span>
+                                            {net !== 0 && (
+                                                <span
+                                                    className={cn(
+                                                        'tabular-nums',
+                                                        net > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
+                                                    )}
+                                                >
+                                                    {net > 0 ? '+' : '−'}
+                                                    {compact(Math.abs(net))}
+                                                </span>
+                                            )}
                                         </div>
-                                    }
-                                />
-                            ))}
-                        </div>
+                                        <div className="divide-y px-4">
+                                            {items.map((tx) => (
+                                                <SwipeActions
+                                                    key={tx.id}
+                                                    actions={
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openForm(tx)}
+                                                                className="flex flex-1 flex-col items-center justify-center gap-0.5 bg-blue-600 text-[11px] text-white"
+                                                            >
+                                                                <Pencil className="size-4" /> {t('Ubah')}
+                                                            </button>
+                                                            <DeleteButton url={route('transactions.destroy', tx.id)} label={t('transaksi')}>
+                                                                <button
+                                                                    type="button"
+                                                                    className="flex h-full w-16 flex-col items-center justify-center gap-0.5 bg-red-600 text-[11px] text-white"
+                                                                >
+                                                                    <Trash2 className="size-4" /> {t('Hapus')}
+                                                                </button>
+                                                            </DeleteButton>
+                                                        </>
+                                                    }
+                                                >
+                                                    <TransactionRow
+                                                        tx={tx}
+                                                        hideDate
+                                                        onClick={() => openForm(tx)}
+                                                        actions={
+                                                            <div className="hidden shrink-0 md:flex" onClick={(e) => e.stopPropagation()}>
+                                                                <Button variant="ghost" size="icon" className="size-8" onClick={() => openForm(tx)}>
+                                                                    <Pencil className="size-4" />
+                                                                </Button>
+                                                                <DeleteButton url={route('transactions.destroy', tx.id)} label={t('transaksi')}>
+                                                                    <Button variant="ghost" size="icon" className="size-8 text-red-600">
+                                                                        <Trash2 className="size-4" />
+                                                                    </Button>
+                                                                </DeleteButton>
+                                                            </div>
+                                                        }
+                                                    />
+                                                </SwipeActions>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-muted-foreground mt-6 -mb-1 text-center text-[11px] md:hidden">
+                                {t('Geser baris ke kiri untuk ubah/hapus')}
+                            </p>
+                        </>
                     )}
                 </Section>
 

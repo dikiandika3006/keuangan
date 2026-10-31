@@ -24,7 +24,7 @@ class TitipanController extends Controller
             'funds' => $funds,
             'transactions' => $user->transactions()
                 ->whereIn('category_id', $funds->pluck('id'))
-                ->with(['account:id,name', 'category:id,name,color'])
+                ->with(['account:id,name', 'category:id,name,color,icon'])
                 ->latest('date')->latest('id')
                 ->limit(1000)
                 ->get(),

@@ -20,6 +20,7 @@ export interface Category {
     name: string;
     type: 'income' | 'expense' | 'titipan';
     color: string;
+    icon?: string | null;
     system_key?: string | null;
 }
 
@@ -40,7 +41,7 @@ export interface Transaction {
     attachment_name?: string | null;
     account?: { id: number; name: string; color?: string };
     to_account?: { id: number; name: string } | null;
-    category?: { id: number; name: string; color: string; system_key?: string | null } | null;
+    category?: { id: number; name: string; color: string; icon?: string | null; system_key?: string | null } | null;
 }
 
 export interface Goal {

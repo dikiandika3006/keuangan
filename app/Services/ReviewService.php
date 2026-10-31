@@ -26,11 +26,12 @@ class ReviewService
         $expense = $sum($now, 'expense');
         $savingRate = $income > 0 ? (int) round(($income - $expense) / $income * 100) : null;
 
-        $categories = $this->user->categories()->get(['id', 'name', 'color'])->keyBy('id');
+        $categories = $this->user->categories()->get(['id', 'name', 'color', 'icon'])->keyBy('id');
         $label = fn ($id) => [
             'id' => $id,
             'name' => $categories[$id]->name ?? __('Tanpa kategori'),
             'color' => $categories[$id]->color ?? '#94a3b8',
+            'icon' => $categories[$id]->icon ?? null,
         ];
 
         $expenseNow = $now->where('type', 'expense')->pluck('total', 'category_id');
@@ -103,7 +104,7 @@ class ReviewService
             'over_budget' => $overBudget,
             'largest' => $this->user->transactions()->where('type', 'expense')->reportable()
                 ->whereBetween('date', [$start->toDateString(), $start->endOfMonth()->toDateString()])
-                ->with('category:id,name,color')->orderByDesc('amount')->limit(5)
+                ->with('category:id,name,color,icon')->orderByDesc('amount')->limit(5)
                 ->get(['id', 'category_id', 'amount', 'date', 'note']),
             'late' => $late,
             'uncategorized' => $uncategorized,

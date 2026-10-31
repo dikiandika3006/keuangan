@@ -16,6 +16,23 @@ type RequestOptions = { challenge: string; rpId: string; userVerification: UserV
 
 export const passkeySupported = () => typeof window !== 'undefined' && !!window.PublicKeyCredential && window.isSecureContext;
 
+/** Penanda di perangkat ini bahwa login biometrik sudah pernah dipakai → tombolnya jadi pilihan utama. */
+const REMEMBER = 'keuangan.passkey';
+export function passkeyRemembered(): boolean {
+    try {
+        return localStorage.getItem(REMEMBER) === '1';
+    } catch {
+        return false;
+    }
+}
+function rememberPasskey() {
+    try {
+        localStorage.setItem(REMEMBER, '1');
+    } catch {
+        // penyimpanan diblokir (mode privat): abaikan
+    }
+}
+
 /** Daftarkan perangkat ini (sidik jari / Face ID / PIN) untuk login biometrik. */
 export async function registerPasskey(name: string, onError: (message: string) => void) {
     const o = await jsonFetch<CreationOptions>(route('passkeys.options'), { method: 'POST', body: {} });
@@ -46,7 +63,7 @@ export async function registerPasskey(name: string, onError: (message: string) =
             publicKey: b64url.encode(publicKey),
             publicKeyAlgorithm: response.getPublicKeyAlgorithm(),
         },
-        { preserveScroll: true, onError: (e) => onError(e.passkey ?? Object.values(e)[0] ?? '') },
+        { preserveScroll: true, onSuccess: rememberPasskey, onError: (e) => onError(e.passkey ?? Object.values(e)[0] ?? '') },
     );
 }
 
@@ -67,6 +84,6 @@ export async function loginWithPasskey(onError: (message: string) => void) {
             authenticatorData: b64url.encode(response.authenticatorData),
             signature: b64url.encode(response.signature),
         },
-        { onError: (e) => onError(e.passkey ?? Object.values(e)[0] ?? '') },
+        { onSuccess: rememberPasskey, onError: (e) => onError(e.passkey ?? Object.values(e)[0] ?? '') },
     );
 }

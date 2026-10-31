@@ -191,5 +191,18 @@
     "Permintaan biometrik kedaluwarsa. Coba lagi.": "The biometric request expired. Try again.",
     "Target dana darurat disimpan.": "Emergency fund target saved.",
     "Tag dihapus.": "Tag deleted.",
-    " · kurang :amount": " · :amount short"
+    " · kurang :amount": " · :amount short",
+    "atau pakai kata sandi": "or use your password",
+    "Ikon": "Icon",
+    "Masuk bulan ini": "In this month",
+    "Keluar bulan ini": "Out this month",
+    ":n tagihan terlambat": ":n overdue bills",
+    "Ketuk untuk ringkas": "Tap to collapse",
+    "Ketuk untuk lihat rinciannya": "Tap to see the details",
+    "Hari ini": "Today",
+    "Kemarin": "Yesterday",
+    "Geser baris ke kiri untuk ubah/hapus": "Swipe a row left to edit/delete",
+    "rata² :amount": "avg :amount",
+    "Ringkas peringatan": "Collapse alerts",
+    ":n peringatan lainnya": ":n more alerts"
 }

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\User;
+use App\Services\BillService;
 use App\Services\FinanceService;
 use App\Services\ProjectionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -113,6 +114,29 @@ class TraceTest extends TestCase
         $user->transactions()->sole()->delete();
         $this->assertSame(14, $debt->installments()->whereNull('paid_at')->count());
         $this->assertSame(140_000_000, $debt->fresh()->remaining_amount);
+    }
+
+    public function test_receivable_principal_withdrawal_shows_in_calendar_and_projection()
+    {
+        [$user] = $this->userWithAccount(0);
+        $base = ['counterparty' => 'Arie', 'principal' => 4_000_000, 'interest_pct' => 0, 'withdrawal' => 334_000, 'due_day' => 5, 'start_month' => '2026-11'];
+
+        // Bulan perubahan tarikan tidak boleh sama dengan bulan mulai
+        $this->post('/receivables', [...$base, 'withdrawal_change_month' => '2026-11', 'withdrawal_after' => 0])
+            ->assertSessionHasErrors('withdrawal_change_month');
+        // Bulan perubahan tanpa nominal pengganti diabaikan: pokok tetap ditarik
+        $this->post('/receivables', [...$base, 'withdrawal_change_month' => '2027-03'])->assertSessionHasNoErrors();
+        $receivable = $user->receivables()->sole();
+        $this->assertNull($receivable->withdrawal_change_month);
+
+        $event = (new BillService($user))->events('2026-11')->firstWhere('source', 'receivable');
+        $this->assertSame(334_000, $event['amount']);
+        $this->assertSame('Bunga Rp0 + pokok Rp334.000', $event['subtitle']);
+
+        ProjectionService::ensureScenarios($user);
+        $service = new ProjectionService($user, new FinanceService($user));
+        $rows = collect($service->project($service->activeScenario())['rows'])->keyBy('month');
+        $this->assertSame(334_000, $rows['2026-12']['withdraw']);
     }
 
     public function test_receivable_payment_is_split_into_interest_and_principal()

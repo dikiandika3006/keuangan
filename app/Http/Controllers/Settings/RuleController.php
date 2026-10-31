@@ -18,7 +18,7 @@ class RuleController extends Controller
         $user = $request->user();
 
         return Inertia::render('settings/rules', [
-            'rules' => $user->rules()->with(['category:id,name,color,type', 'account:id,name', 'recurringItem:id,name'])->orderBy('keyword')->get(),
+            'rules' => $user->rules()->with(['category:id,name,color,icon,type', 'account:id,name', 'recurringItem:id,name'])->orderBy('keyword')->get(),
             'recurringItems' => $user->recurringItems()->where('type', 'expense')->orderBy('name')->get(['id', 'name']),
             'tags' => $user->tags()->withCount('transactions')->orderBy('name')->get(['id', 'name', 'color']),
         ]);

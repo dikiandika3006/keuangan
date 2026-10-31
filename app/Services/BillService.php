@@ -146,7 +146,10 @@ class BillService
                 'source' => 'receivable',
                 'direction' => 'in',
                 'title' => __('Terima dari :name', ['name' => $s->receivable->counterparty]),
-                'subtitle' => __('Bunga + pokok'),
+                'subtitle' => __('Bunga :interest + pokok :principal', [
+                    'interest' => 'Rp'.number_format($s->interest_due, 0, ',', '.'),
+                    'principal' => 'Rp'.number_format($s->principal_due, 0, ',', '.'),
+                ]),
                 'color' => '#6366f1',
                 'amount' => $s->interest_due + $s->principal_due,
                 'done' => $got['interest'] + $got['principal'],
@@ -189,7 +192,7 @@ class BillService
 
     public function recurringItems(): Collection
     {
-        return $this->user->recurringItems()->with(['category:id,name,color', 'account:id,name', 'toAccount:id,name,color'])->orderBy('id')->get();
+        return $this->user->recurringItems()->with(['category:id,name,color,icon', 'account:id,name', 'toAccount:id,name,color'])->orderBy('id')->get();
     }
 
     /** @return array{0: CarbonImmutable, 1: CarbonImmutable} */

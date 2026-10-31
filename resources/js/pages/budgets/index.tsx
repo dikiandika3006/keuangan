@@ -1,3 +1,4 @@
+import { CategoryIcon, categoryIconName, IconPicker } from '@/components/finance/category-icon';
 import { currentMonth } from '@/components/finance/fixed-items-editor';
 import { MoneyInput } from '@/components/finance/money-input';
 import { ColorPicker, DeleteButton, Field, FormDialog, Page, PageHeader, ProgressBar, Section, StatCard } from '@/components/finance/ui';
@@ -19,6 +20,7 @@ interface CategoryRow {
     name: string;
     type: 'income' | 'expense';
     color: string;
+    icon: string | null;
     budget: number | null;
     /** Biaya tetap & cicilan bulan ini berkategori ini (dari Biaya Bulanan) */
     fixed: number;
@@ -48,12 +50,14 @@ export default function Budgets({ month, categories, monthLabel }: { month: stri
 
     const [catOpen, setCatOpen] = useState(false);
     const [editingCat, setEditingCat] = useState<CategoryRow | null>(null);
-    const catForm = useForm({ name: '', type: 'expense' as 'income' | 'expense', color: COLORS[0] });
+    const catForm = useForm({ name: '', type: 'expense' as 'income' | 'expense', color: COLORS[0], icon: '' });
 
     const openCat = (c: CategoryRow | null, type: 'income' | 'expense' = 'expense') => {
         setEditingCat(c);
         catForm.clearErrors();
-        catForm.setData(c ? { name: c.name, type: c.type, color: c.color } : { name: '', type, color: COLORS[0] });
+        catForm.setData(
+            c ? { name: c.name, type: c.type, color: c.color, icon: categoryIconName(c) } : { name: '', type, color: COLORS[0], icon: '' },
+        );
         setCatOpen(true);
     };
 
@@ -140,7 +144,7 @@ export default function Budgets({ month, categories, monthLabel }: { month: stri
                             return (
                                 <li key={c.id} className="py-3">
                                     <div className="flex items-center gap-3">
-                                        <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
+                                        <CategoryIcon category={c} size="sm" />
                                         <div className="min-w-0 flex-1">
                                             <div className="truncate text-sm font-medium">{c.name}</div>
                                             <div className={cn('text-muted-foreground text-xs tabular-nums', over && 'font-medium text-red-600')}>
@@ -197,7 +201,7 @@ export default function Budgets({ month, categories, monthLabel }: { month: stri
                     <ul className="divide-y">
                         {income.map((c) => (
                             <li key={c.id} className="flex items-center gap-3 py-2">
-                                <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
+                                <CategoryIcon category={c} size="sm" />
                                 <span className="flex-1 truncate text-sm font-medium">{c.name}</span>
                                 {actions(c)}
                             </li>
@@ -231,6 +235,13 @@ export default function Budgets({ month, categories, monthLabel }: { month: stri
                 </Field>
                 <Field label={t('Warna')}>
                     <ColorPicker value={catForm.data.color} onChange={(c) => catForm.setData('color', c)} colors={COLORS} />
+                </Field>
+                <Field label={t('Ikon')}>
+                    <IconPicker
+                        value={catForm.data.icon || categoryIconName({ name: catForm.data.name })}
+                        onChange={(i) => catForm.setData('icon', i)}
+                        color={catForm.data.color}
+                    />
                 </Field>
             </FormDialog>
         </AppLayout>

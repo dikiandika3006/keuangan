@@ -38,7 +38,6 @@
     "Transaksi diperbarui.": "Transaction updated.",
     "Transaksi dihapus.": "Transaction deleted.",
     "Tanpa kategori": "Uncategorized",
-    "Bunga + pokok": "Interest + principal",
     "Dana darurat": "Emergency fund",
     "Idealnya 3–6x pengeluaran bulanan (6–12x jika sudah berkeluarga / pekerja lepas).": "Ideally 3–6× monthly expenses (6–12× if you have a family / are self-employed).",
     "Rasio tabungan": "Savings rate",
@@ -82,5 +81,8 @@
     "Tanggal sebelum piutang dimulai (:month).": "The date is before the receivable started (:month).",
     "Pokok :amount melebihi sisa pokok :remaining.": "Principal :amount exceeds the remaining principal :remaining.",
     "Realisasi FIRE disimpan.": "FIRE progress saved.",
-    "Realisasi FIRE dihapus.": "FIRE progress deleted."
+    "Realisasi FIRE dihapus.": "FIRE progress deleted.",
+    "Bunga :interest + pokok :principal": "Interest :interest + principal :principal",
+    "Bulan perubahan tarikan harus setelah bulan mulai.": "The withdrawal change month must be after the start month.",
+    "Bunga + pokok": "Interest + principal"
 }

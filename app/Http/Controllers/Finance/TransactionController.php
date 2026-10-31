@@ -30,7 +30,7 @@ class TransactionController extends Controller
 
         $query = $user->transactions()
             ->ownMoney()
-            ->with(['account:id,name,color', 'toAccount:id,name', 'category:id,name,color,system_key', 'tags:id,name,color'])
+            ->with(['account:id,name,color', 'toAccount:id,name', 'category:id,name,color,icon,system_key', 'tags:id,name,color'])
             ->when($month !== 'all', function ($q) use ($month) {
                 $start = CarbonImmutable::createFromFormat('Y-m-d', $month.'-01');
                 $q->whereBetween('date', [$start->toDateString(), $start->endOfMonth()->toDateString()]);
@@ -51,7 +51,7 @@ class TransactionController extends Controller
             ],
             'filters' => [...$filters, 'month' => $month],
             'accounts' => $user->accounts()->orderBy('name')->get(['id', 'name']),
-            'categories' => $user->categories()->where('type', '!=', Category::TITIPAN)->orderBy('name')->get(['id', 'name', 'type', 'color']),
+            'categories' => $user->categories()->where('type', '!=', Category::TITIPAN)->orderBy('name')->get(['id', 'name', 'type', 'color', 'icon']),
             'tags' => $user->tags()->orderBy('name')->get(['id', 'name', 'color']),
         ]);
     }

@@ -1,6 +1,6 @@
 import { AccountOptions } from '@/components/finance/account-select';
 import { MoneyInput } from '@/components/finance/money-input';
-import { Field, FormDialog } from '@/components/finance/ui';
+import { Field, FormDialog, SkeletonBlock } from '@/components/finance/ui';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { compact, today } from '@/lib/format';
@@ -48,7 +48,8 @@ export function QuickEntry({
     const [accountId, setAccountId] = useState('');
     const [date, setDate] = useState(today());
     const [source, setSource] = useState<Suggestion['source']>(null);
-    const [frequent, setFrequent] = useState<Frequent[]>([]);
+    // null = masih dimuat (tampilkan kerangka)
+    const [frequent, setFrequent] = useState<Frequent[] | null>(null);
     const [processing, setProcessing] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const touched = useRef({ category: false, account: false, amount: false, type: false });
@@ -64,6 +65,7 @@ export function QuickEntry({
         setSource(null);
         setErrors({});
         touched.current = { category: false, account: false, amount: false, type: false };
+        setFrequent(null);
         jsonFetch<Frequent[]>(route('transactions.frequent'))
             .then(setFrequent)
             .catch(() => setFrequent([]));
@@ -119,7 +121,14 @@ export function QuickEntry({
             onSubmit={() => save({ type, account_id: accountId, category_id: categoryId, amount, note: parsed.note, date })}
             processing={processing}
         >
-            {frequent.length > 0 && (
+            {frequent === null && (
+                <div className="flex gap-1.5">
+                    {[0, 1, 2].map((i) => (
+                        <SkeletonBlock key={i} className="h-7 w-24 rounded-full" />
+                    ))}
+                </div>
+            )}
+            {frequent !== null && frequent.length > 0 && (
                 <div className="grid gap-1.5">
                     <div className="text-muted-foreground flex items-center gap-1 text-xs font-medium">
                         <Zap className="size-3.5" /> {t('Sering dicatat, ketuk untuk simpan hari ini')}

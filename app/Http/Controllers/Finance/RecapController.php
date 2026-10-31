@@ -31,11 +31,12 @@ class RecapController extends Controller
             ->groupBy('month', 'type', 'category_id')
             ->get();
 
-        $categories = $user->categories()->get(['id', 'name', 'color'])->keyBy('id');
+        $categories = $user->categories()->get(['id', 'name', 'color', 'icon'])->keyBy('id');
         $category = fn ($id) => [
             'id' => $id,
             'name' => $categories[$id]->name ?? __('Tanpa kategori'),
             'color' => $categories[$id]->color ?? '#94a3b8',
+            'icon' => $categories[$id]->icon ?? null,
         ];
 
         $prevMonth = $start->subMonth()->format('Y-m');

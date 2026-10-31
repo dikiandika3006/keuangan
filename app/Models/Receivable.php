@@ -54,7 +54,8 @@ class Receivable extends Model
     /** Tarikan pokok untuk bulan tertentu (RCV-05: bisa berubah mulai bulan tertentu). */
     public function withdrawalFor(CarbonImmutable $period): int
     {
-        if ($this->withdrawal_change_month && $period->gte(CarbonImmutable::parse($this->withdrawal_change_month)->startOfMonth())) {
+        // Tanpa nominal pengganti, bulan perubahan diabaikan (bukan dianggap berhenti tarik pokok)
+        if ($this->withdrawal_change_month && $this->withdrawal_after !== null && $period->gte(CarbonImmutable::parse($this->withdrawal_change_month)->startOfMonth())) {
             return (int) ($this->withdrawal_after ?? 0);
         }
 
