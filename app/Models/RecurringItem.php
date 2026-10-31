@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsActivity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RecurringItem extends Model
 {
+    use LogsActivity;
+
     protected $fillable = ['name', 'type', 'category_id', 'account_id', 'to_account_id', 'amount', 'due_day', 'start_date', 'end_date', 'end_confirmed_at'];
 
     protected function casts(): array

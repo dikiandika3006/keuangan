@@ -8,4 +8,5 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('keuangan:backup')->dailyAt('06:00');
+// Bila cron Hostinger dipasang (php artisan schedule:run tiap menit); tanpa cron tugas tetap jalan lewat request/URL cron
+Schedule::command('keuangan:tasks')->everyFifteenMinutes();

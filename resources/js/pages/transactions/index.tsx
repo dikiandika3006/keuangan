@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { type Category, type Paginated, type Transaction } from '@/types/finance';
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, Pencil, Plus, Receipt, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, Plus, Receipt, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: t('Transaksi'), href: '/transactions' }];
@@ -19,9 +19,10 @@ const breadcrumbs: BreadcrumbItem[] = [{ title: t('Transaksi'), href: '/transact
 interface Props {
     transactions: Paginated<Transaction>;
     totals: { income: number; expense: number };
-    filters: { month: string; type?: string; account_id?: string; category_id?: string; search?: string };
+    filters: { month: string; type?: string; account_id?: string; category_id?: string; tag_id?: string; search?: string };
     accounts: { id: number; name: string }[];
     categories: Category[];
+    tags: { id: number; name: string; color: string }[];
 }
 
 function shiftMonth(month: string, delta: number) {
@@ -36,7 +37,7 @@ function monthLabel(month: string) {
     return new Date(y, m - 1, 1).toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
 }
 
-export default function Transactions({ transactions, totals, filters, accounts, categories }: Props) {
+export default function Transactions({ transactions, totals, filters, accounts, categories, tags }: Props) {
     const [formOpen, setFormOpen] = useState(false);
     const [editing, setEditing] = useState<Transaction | null>(null);
     const [search, setSearch] = useState(filters.search ?? '');
@@ -70,9 +71,16 @@ export default function Transactions({ transactions, totals, filters, accounts, 
                     title={t('Transaksi')}
                     description={t('Catatan pemasukan, pengeluaran, dan transfer antar rekening.')}
                     actions={
-                        <Button onClick={() => openForm(null)}>
-                            <Plus /> {t('Catat Transaksi')}
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                            <Button variant="outline" asChild>
+                                <Link href={route('import.index')}>
+                                    <Upload /> {t('Impor Mutasi')}
+                                </Link>
+                            </Button>
+                            <Button onClick={() => openForm(null)}>
+                                <Plus /> {t('Catat Transaksi')}
+                            </Button>
+                        </div>
                     }
                 />
 
@@ -115,7 +123,7 @@ export default function Transactions({ transactions, totals, filters, accounts, 
                     />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
                     <Input
                         placeholder={t('Cari catatan...')}
                         value={search}
@@ -155,6 +163,19 @@ export default function Transactions({ transactions, totals, filters, accounts, 
                             {categories.map((c) => (
                                 <SelectItem key={c.id} value={String(c.id)}>
                                     {c.name} ({c.type === 'income' ? t('masuk') : c.type === 'titipan' ? t('titipan') : t('keluar')})
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Select value={filters.tag_id ?? 'any'} onValueChange={(v) => apply({ tag_id: v })}>
+                        <SelectTrigger className="col-span-2 md:col-span-1">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="any">{t('Semua tag')}</SelectItem>
+                            {tags.map((tag) => (
+                                <SelectItem key={tag.id} value={String(tag.id)}>
+                                    #{tag.name}
                                 </SelectItem>
                             ))}
                         </SelectContent>

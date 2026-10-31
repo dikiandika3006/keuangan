@@ -19,7 +19,7 @@ class AccountController extends Controller
         $user = $request->user();
 
         // Rata-rata pengeluaran mingguan 8 minggu terakhir, untuk peringatan selisih rekonsiliasi besar (BR-23)
-        $expense8w = (int) $user->transactions()->where('type', 'expense')->ownMoney()
+        $expense8w = (int) $user->transactions()->where('type', 'expense')->reportable()
             ->whereBetween('date', [now()->subWeeks(8)->toDateString(), now()->toDateString()])->sum('amount');
 
         $allocations = $user->recurringItems()->where('type', 'transfer')->get()->keyBy('to_account_id');
@@ -79,6 +79,14 @@ class AccountController extends Controller
     public function destroy(Account $account): RedirectResponse
     {
         $this->ensureOwner($account);
+
+        // Menghapus rekening ikut menghapus transaksinya (termasuk transfer dari/ke rekening lain), jadi saldo
+        // rekening lain & status cicilan bisa berubah diam-diam. Rekening yang sudah dipakai cukup diarsipkan.
+        $used = $account->user->transactions()->where(fn ($q) => $q->where('account_id', $account->id)->orWhere('to_account_id', $account->id))->count();
+        if ($used > 0) {
+            return back()->with('error', __(':name masih punya :count transaksi. Arsipkan saja agar riwayat & saldo rekening lain tetap utuh.', ['name' => $account->name, 'count' => $used]));
+        }
+
         $account->delete();
 
         return back()->with('success', __('Rekening dihapus.'));

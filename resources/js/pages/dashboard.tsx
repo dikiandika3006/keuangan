@@ -71,6 +71,9 @@ interface Props {
     budgets: { id: number; name: string; color: string; amount: number; spent: number }[];
     goals: Goal[];
     recentTransactions: Transaction[];
+    netWorth: { month: string; label: string; assets: number; debt: number; net_worth: number }[];
+    emergencyTarget: { months: number; monthly: number; amount: number };
+    reviewReady: string | null;
 }
 
 const statusIcon = {
@@ -90,7 +93,22 @@ function scoreLabel(score: number | null) {
 const tooltipStyle = { backgroundColor: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 };
 
 export default function Dashboard(props: Props) {
-    const { trace, position, averages, thisMonth, series, health, accounts, expenseByCategory, budgets, goals, recentTransactions } = props;
+    const {
+        trace,
+        position,
+        averages,
+        thisMonth,
+        series,
+        health,
+        accounts,
+        expenseByCategory,
+        budgets,
+        goals,
+        recentTransactions,
+        netWorth,
+        emergencyTarget,
+        reviewReady,
+    } = props;
     const summary = trace.summary;
     const [txOpen, setTxOpen] = useState(false);
     const net = thisMonth.income - thisMonth.expense;
@@ -110,6 +128,17 @@ export default function Dashboard(props: Props) {
                         </Button>
                     }
                 />
+
+                {reviewReady && (
+                    <Link
+                        href={route('review.index', { month: reviewReady })}
+                        className="flex items-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/5 p-3 text-sm hover:opacity-80"
+                    >
+                        <Sparkles className="size-4 shrink-0 text-indigo-500" />
+                        <span className="flex-1">{t('Tinjauan bulan lalu sudah siap: ringkasan, kategori yang naik, dan saran.')}</span>
+                        <span className="text-primary shrink-0 font-medium">{t('Lihat')}</span>
+                    </Link>
+                )}
 
                 {accounts.length === 0 && (
                     <div className="rounded-xl border border-dashed border-emerald-500/50 bg-emerald-500/5 p-4 text-sm">
@@ -208,21 +237,19 @@ export default function Dashboard(props: Props) {
                     />
                     <StatCard
                         label={t('Dana Darurat')}
-                        value={rupiah(position.emergency_fund_flagged ? position.emergency_fund : 0)}
+                        value={rupiah(position.emergency_fund)}
                         sub={
-                            summary ? (
+                            emergencyTarget.amount > 0 ? (
                                 <span className="block">
-                                    <ProgressBar
-                                        className="mb-1"
-                                        value={percent(position.emergency_fund_flagged ? position.emergency_fund : 0, summary.emergency_target)}
-                                        color="#10b981"
-                                    />
-                                    {t(':pct% dari :amount', {
-                                        pct: Math.round(
-                                            percent(position.emergency_fund_flagged ? position.emergency_fund : 0, summary.emergency_target),
-                                        ),
-                                        amount: compact(summary.emergency_target),
+                                    <ProgressBar className="mb-1" value={percent(position.emergency_fund, emergencyTarget.amount)} color="#10b981" />
+                                    {t(':n dari :target bln pengeluaran', {
+                                        n: (position.emergency_fund / emergencyTarget.monthly).toLocaleString(intlLocale, {
+                                            maximumFractionDigits: 1,
+                                        }),
+                                        target: emergencyTarget.months,
                                     })}
+                                    {position.emergency_fund < emergencyTarget.amount &&
+                                        t(' · kurang :amount', { amount: compact(emergencyTarget.amount - position.emergency_fund) })}
                                     {!position.emergency_fund_flagged && t(' · tandai rekening dana darurat')}
                                 </span>
                             ) : undefined
@@ -396,6 +423,30 @@ export default function Dashboard(props: Props) {
                         )}
                     </Section>
                 </div>
+
+                <Section title={t('Kekayaan Bersih 12 Bulan')}>
+                    <div className="h-60">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={netWorth} margin={{ left: -10, right: 4, top: 4 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                                <YAxis tickFormatter={compact} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={56} />
+                                <Tooltip formatter={(v) => rupiah(Number(v))} contentStyle={tooltipStyle} cursor={{ fill: 'var(--muted)' }} />
+                                <Legend wrapperStyle={{ fontSize: 12 }} />
+                                <Bar dataKey="assets" name={t('Aset')} fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={18} />
+                                <Bar dataKey="debt" name={t('Utang')} fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={18} />
+                                <Line
+                                    dataKey="net_worth"
+                                    name={t('Kekayaan Bersih')}
+                                    stroke="#6366f1"
+                                    strokeWidth={2.5}
+                                    dot={false}
+                                    type="monotone"
+                                />
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Section>
 
                 <div className="grid gap-4 lg:grid-cols-3">
                     <Section title={t('Kesehatan Keuangan')} className="lg:col-span-1">

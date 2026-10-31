@@ -52,5 +52,8 @@
     "Update dana: :name": "Update funds: :name",
     "Terkumpul saat ini :amount": "Currently saved :amount",
     "Tambah dana": "Add funds",
-    "Tarik dana": "Withdraw funds"
+    "Tarik dana": "Withdraw funds",
+    "Biaya tetap & cicilan dari Biaya Bulanan otomatis jadi batas minimal kategorinya, jadi tidak perlu dianggarkan dua kali.": "Fixed costs & installments from Monthly Bills automatically become the minimum limit of their category, so you don't budget them twice.",
+    "Biaya tetap :amount lebih besar dari batas :budget": "Fixed costs :amount exceed the limit :budget",
+    "termasuk biaya tetap :amount": "incl. fixed costs :amount"
 }

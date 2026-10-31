@@ -1,6 +1,6 @@
 // Service worker sederhana: aset build (nama ber-hash) disimpan di cache, halaman selalu dari jaringan
 // (data keuangan harus terbaru). Saat offline, halaman diganti pesan singkat.
-const CACHE = 'keuangan-v1';
+const CACHE = 'keuangan-v2';
 const OFFLINE_HTML =
     '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>Offline</title><body style="font-family:sans-serif;display:grid;place-items:center;height:100vh;margin:0;text-align:center">' +
@@ -39,4 +39,41 @@ self.addEventListener('fetch', (event) => {
     if (req.mode === 'navigate') {
         event.respondWith(fetch(req).catch(() => new Response(OFFLINE_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })));
     }
+});
+
+// Notifikasi push: server hanya mengirim "ketukan" tanpa isi; isi pengingat diambil dari server (pakai sesi login)
+self.addEventListener('push', (event) => {
+    event.waitUntil(
+        fetch('/notifications/pending', { credentials: 'include', headers: { Accept: 'application/json' } })
+            .then((res) => (res.ok ? res.json() : []))
+            .catch(() => [])
+            .then((items) => {
+                if (!items.length) {
+                    return self.registration.showNotification('Keuangan', { body: 'Ada pengingat baru. Buka aplikasi untuk melihat.', icon: '/pwa-192.png', tag: 'keuangan' });
+                }
+                return Promise.all(
+                    items.map((n) =>
+                        self.registration.showNotification(n.title, {
+                            body: n.body,
+                            icon: '/pwa-192.png',
+                            badge: '/pwa-192.png',
+                            tag: 'keuangan-' + n.id,
+                            data: { url: n.url || '/dashboard' },
+                        }),
+                    ),
+                );
+            }),
+    );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = (event.notification.data && event.notification.data.url) || '/dashboard';
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+            const open = list.find((c) => new URL(c.url).origin === location.origin);
+            if (open) return open.navigate(url).then((c) => (c || open).focus());
+            return self.clients.openWindow(url);
+        }),
+    );
 });

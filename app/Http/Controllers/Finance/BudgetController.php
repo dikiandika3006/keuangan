@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Services\BillService;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -17,27 +19,42 @@ class BudgetController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $start = now()->startOfMonth()->toDateString();
+        $month = preg_match('/^\d{4}-\d{2}$/', (string) $request->query('month')) ? $request->query('month') : now()->format('Y-m');
+        $start = CarbonImmutable::createFromFormat('Y-m-d', $month.'-01')->startOfDay();
 
         $spent = $user->transactions()
             ->where('type', 'expense')
-            ->ownMoney()
-            ->where('date', '>=', $start)
+            ->reportable()
+            ->whereBetween('date', [$start->toDateString(), $start->endOfMonth()->toDateString()])
             ->selectRaw('category_id, SUM(amount) as total')
             ->groupBy('category_id')
             ->pluck('total', 'category_id');
 
         $budgets = $user->budgets()->pluck('amount', 'category_id');
 
-        $categories = $user->categories()->orderBy('type')->orderBy('name')->get()->map(fn (Category $c) => [
-            ...$c->only(['id', 'name', 'type', 'color']),
-            'budget' => $budgets[$c->id] ?? null,
-            'spent' => (int) ($spent[$c->id] ?? 0),
-        ]);
+        // Biaya tetap bulan ini (item rutin + cicilan utang) per kategori: sudah pasti keluar, jadi anggaran
+        // kategori itu minimal sebesar biaya tetapnya; tidak perlu dicatat dua kali sebagai anggaran terpisah
+        $fixed = (new BillService($user))->bills($month)
+            ->where('source', '!=', 'pocket')
+            ->groupBy(fn ($b) => $b['category']['id'] ?? 0)
+            ->map(fn ($bills) => (int) $bills->sum('amount'));
+
+        $categories = $user->categories()
+            ->whereIn('type', ['income', 'expense'])
+            // Kategori pindahan (setor aset, pokok utang, dll.) bukan pengeluaran, jadi tidak dianggarkan
+            ->where(fn ($q) => $q->whereNull('system_key')->orWhereNotIn('system_key', Category::INTERNAL_MOVES))
+            ->orderBy('type')->orderBy('name')->get()
+            ->map(fn (Category $c) => [
+                ...$c->only(['id', 'name', 'type', 'color']),
+                'budget' => $budgets[$c->id] ?? null,
+                'fixed' => (int) ($fixed[$c->id] ?? 0),
+                'spent' => (int) ($spent[$c->id] ?? 0),
+            ]);
 
         return Inertia::render('budgets/index', [
+            'month' => $month,
             'categories' => $categories,
-            'monthLabel' => now()->locale(app()->getLocale())->translatedFormat('F Y'),
+            'monthLabel' => $start->locale(app()->getLocale())->translatedFormat('F Y'),
         ]);
     }
 

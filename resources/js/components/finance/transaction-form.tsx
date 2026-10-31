@@ -1,19 +1,22 @@
 import { AccountOptions } from '@/components/finance/account-select';
 import { AttachmentPicker } from '@/components/finance/attachment-picker';
 import { MoneyInput } from '@/components/finance/money-input';
+import { TagInput } from '@/components/finance/tag-input';
 import { Field, FormDialog } from '@/components/finance/ui';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { today } from '@/lib/format';
+import { rupiah, today } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { type Category, type Transaction, type TxType } from '@/types/finance';
 import { Link, useForm, usePage } from '@inertiajs/react';
+import { Plus, X } from 'lucide-react';
 import { useEffect } from 'react';
 
 interface FinanceShared extends SharedData {
-    finance: { accounts: { id: number; name: string; type: string }[]; categories: Category[] } | null;
+    finance: { accounts: { id: number; name: string; type: string }[]; categories: Category[]; tags: string[] } | null;
 }
 
 const TYPES: { value: TxType; label: string; className: string }[] = [
@@ -32,6 +35,9 @@ type FormData = {
     note: string;
     attachment: File | null;
     remove_attachment: boolean;
+    tags: string[];
+    /** Pecah transaksi: satu struk → beberapa kategori (hanya transaksi baru) */
+    splits: { category_id: string; amount: number | ''; note: string }[];
 };
 
 export function TransactionForm({
@@ -44,7 +50,7 @@ export function TransactionForm({
     onOpenChange: (o: boolean) => void;
     transaction?: Transaction | null;
     /** Nilai awal untuk transaksi baru, mis. dari halaman Titipan */
-    defaults?: Partial<Pick<FormData, 'type' | 'category_id' | 'note'>>;
+    defaults?: Partial<Pick<FormData, 'type' | 'category_id' | 'note' | 'amount' | 'account_id'>>;
 }) {
     const { finance } = usePage<FinanceShared>().props;
     const accounts = finance?.accounts ?? [];
@@ -60,6 +66,8 @@ export function TransactionForm({
         note: '',
         attachment: null,
         remove_attachment: false,
+        tags: [],
+        splits: [],
     });
 
     useEffect(() => {
@@ -76,6 +84,8 @@ export function TransactionForm({
                 note: transaction.note ?? '',
                 attachment: null,
                 remove_attachment: false,
+                tags: transaction.tags?.map((tg) => tg.name) ?? [],
+                splits: [],
             });
         } else {
             form.setData({
@@ -88,6 +98,8 @@ export function TransactionForm({
                 note: '',
                 attachment: null,
                 remove_attachment: false,
+                tags: [],
+                splits: [],
                 ...defaults,
             });
         }
@@ -97,7 +109,14 @@ export function TransactionForm({
     const submit = () => {
         // File hanya bisa dikirim lewat POST multipart; ubah data memakai method spoofing PUT
         const options = { preserveScroll: true, forceFormData: true, onSuccess: () => onOpenChange(false) };
-        form.transform((d) => ({ ...d, remove_attachment: d.remove_attachment ? 1 : 0, ...(transaction ? { _method: 'put' } : {}) }));
+        form.transform(({ splits, ...d }) => ({
+            ...d,
+            remove_attachment: d.remove_attachment ? 1 : 0,
+            // Daftar tag kosong tidak ikut terkirim di multipart; penanda ini memberi tahu server untuk tetap menyinkronkan
+            tags_present: 1,
+            ...(splits.length ? { splits, amount: splits.reduce((s, x) => s + (Number(x.amount) || 0), 0) } : {}),
+            ...(transaction ? { _method: 'put' } : {}),
+        }));
         if (transaction) form.post(route('transactions.update', transaction.id), options);
         else form.post(route('transactions.store'), options);
     };
@@ -106,6 +125,12 @@ export function TransactionForm({
     const filteredCategories = categories.filter((c) => c.type === data.type);
     // Titipan bisa masuk (diterima) maupun keluar (diteruskan)
     const titipanCategories = categories.filter((c) => c.type === 'titipan');
+    const splitTotal = data.splits.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+    const setSplit = (i: number, patch: Partial<FormData['splits'][number]>) =>
+        setData(
+            'splits',
+            data.splits.map((s, j) => (j === i ? { ...s, ...patch } : s)),
+        );
 
     return (
         <FormDialog
@@ -139,9 +164,11 @@ export function TransactionForm({
                         ))}
                     </div>
 
-                    <Field label={t('Nominal')} error={errors.amount} htmlFor="amount">
-                        <MoneyInput id="amount" value={data.amount} onChange={(v) => setData('amount', v)} autoFocus />
-                    </Field>
+                    {data.splits.length === 0 && (
+                        <Field label={t('Nominal')} error={errors.amount} htmlFor="amount">
+                            <MoneyInput id="amount" value={data.amount} onChange={(v) => setData('amount', v)} autoFocus />
+                        </Field>
+                    )}
 
                     <div className="grid gap-4 sm:grid-cols-2">
                         <Field label={data.type === 'transfer' ? t('Dari rekening') : t('Rekening')} error={errors.account_id}>
@@ -166,7 +193,7 @@ export function TransactionForm({
                                     </SelectContent>
                                 </Select>
                             </Field>
-                        ) : (
+                        ) : data.splits.length > 0 ? null : (
                             <Field label={t('Kategori')} error={errors.category_id}>
                                 <Select value={data.category_id} onValueChange={(v) => setData('category_id', v)}>
                                     <SelectTrigger>
@@ -214,6 +241,87 @@ export function TransactionForm({
                             <Input id="note" value={data.note} onChange={(e) => setData('note', e.target.value)} placeholder={t('Opsional')} />
                         </Field>
                     </div>
+
+                    {!transaction && data.type !== 'transfer' && (
+                        <div className="grid gap-2 rounded-lg border p-3">
+                            <label className="flex items-center gap-2 text-sm font-medium">
+                                <input
+                                    type="checkbox"
+                                    checked={data.splits.length > 0}
+                                    onChange={(e) =>
+                                        setData(
+                                            'splits',
+                                            e.target.checked
+                                                ? [
+                                                      { category_id: data.category_id, amount: data.amount, note: '' },
+                                                      { category_id: '', amount: '', note: '' },
+                                                  ]
+                                                : [],
+                                        )
+                                    }
+                                />
+                                {t('Pecah ke beberapa kategori')}
+                            </label>
+                            {data.splits.length > 0 && (
+                                <>
+                                    {data.splits.map((s, i) => (
+                                        <div key={i} className="grid grid-cols-[1fr_8rem_auto] items-center gap-2">
+                                            <Select value={s.category_id} onValueChange={(v) => setSplit(i, { category_id: v })}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder={t('Kategori')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {filteredCategories.map((c) => (
+                                                        <SelectItem key={c.id} value={String(c.id)}>
+                                                            {c.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <MoneyInput value={s.amount} onChange={(v) => setSplit(i, { amount: v })} />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="size-8"
+                                                disabled={data.splits.length <= 2}
+                                                onClick={() =>
+                                                    setData(
+                                                        'splits',
+                                                        data.splits.filter((_, j) => j !== i),
+                                                    )
+                                                }
+                                                aria-label={t('Hapus baris')}
+                                            >
+                                                <X className="size-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    <div className="flex items-center justify-between text-xs">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={data.splits.length >= 10}
+                                            onClick={() => setData('splits', [...data.splits, { category_id: '', amount: '', note: '' }])}
+                                        >
+                                            <Plus /> {t('Baris')}
+                                        </Button>
+                                        <span className="text-muted-foreground tabular-nums">
+                                            {t('Total :amount', { amount: rupiah(splitTotal) })}
+                                        </span>
+                                    </div>
+                                    {(errors as Record<string, string>)['splits.0.category_id'] && (
+                                        <p className="text-xs text-red-600">{t('Pilih kategori & isi nominal tiap baris.')}</p>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    <Field label={t('Tag')} htmlFor="tags">
+                        <TagInput value={data.tags} onChange={(v) => setData('tags', v)} suggestions={finance?.tags ?? []} />
+                    </Field>
 
                     <AttachmentPicker
                         file={data.attachment}

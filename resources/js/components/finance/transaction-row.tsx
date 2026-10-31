@@ -2,7 +2,7 @@ import { formatDate, rupiah } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type Transaction } from '@/types/finance';
-import { ArrowLeftRight, Paperclip } from 'lucide-react';
+import { ArrowLeftRight, Paperclip, Split } from 'lucide-react';
 import { ReactNode } from 'react';
 
 export function TransactionRow({ tx, actions, onClick }: { tx: Transaction; actions?: ReactNode; onClick?: () => void }) {
@@ -31,6 +31,10 @@ export function TransactionRow({ tx, actions, onClick }: { tx: Transaction; acti
                             <Paperclip className="size-3.5" />
                         </a>
                     )}
+                    {tx.split_group && <Split className="text-muted-foreground size-3.5 shrink-0" aria-label={t('Hasil pecah transaksi')} />}
+                    {tx.source === 'import' && (
+                        <span className="bg-muted text-muted-foreground shrink-0 rounded px-1.5 py-0.5 text-[10px] font-normal">{t('impor')}</span>
+                    )}
                     {tx.source === 'reconcile' && (
                         <span className="bg-muted text-muted-foreground shrink-0 rounded px-1.5 py-0.5 text-[10px] font-normal">
                             {t('rekonsiliasi')}
@@ -40,6 +44,11 @@ export function TransactionRow({ tx, actions, onClick }: { tx: Transaction; acti
                 <div className="text-muted-foreground truncate text-xs">
                     {formatDate(tx.date)} · {tx.account?.name}
                     {tx.note ? ` · ${tx.note}` : ''}
+                    {tx.tags?.map((tag) => (
+                        <span key={tag.id} className="ml-1" style={{ color: tag.color }}>
+                            #{tag.name}
+                        </span>
+                    ))}
                 </div>
             </div>
             <div

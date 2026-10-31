@@ -83,5 +83,9 @@
     "Dapat kerja Januari": "New job in January",
     "Status kerja": "Employment status",
     "Sejak": "Since",
-    "Perusahaan": "Company"
+    "Perusahaan": "Company",
+    "Cicilan mobil diambil dari menu Utang.": "Car installments are taken from the Debts menu.",
+    "Cicilan rumah diambil dari menu Utang.": "Mortgage installments are taken from the Debts menu.",
+    "Bunga & tarikan pokok diambil dari menu Piutang.": "Interest & principal withdrawals are taken from the Receivables menu.",
+    "Utang lain": "Other debts"
 }

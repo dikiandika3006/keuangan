@@ -3,26 +3,32 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Models\Rule as AutoRule;
 use App\Models\Transaction;
+use App\Services\SuggestionService;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TransactionController extends Controller
 {
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $filters = $request->only(['month', 'type', 'account_id', 'category_id', 'search']);
+        $filters = $request->only(['month', 'type', 'account_id', 'category_id', 'tag_id', 'search']);
         $month = $filters['month'] ?? now()->format('Y-m');
 
         $query = $user->transactions()
-            ->with(['account:id,name,color', 'toAccount:id,name', 'category:id,name,color,system_key'])
+            ->with(['account:id,name,color', 'toAccount:id,name', 'category:id,name,color,system_key', 'tags:id,name,color'])
             ->when($month !== 'all', function ($q) use ($month) {
                 $start = CarbonImmutable::createFromFormat('Y-m-d', $month.'-01');
                 $q->whereBetween('date', [$start->toDateString(), $start->endOfMonth()->toDateString()]);
@@ -30,9 +36,10 @@ class TransactionController extends Controller
             ->when($filters['type'] ?? null, fn ($q, $v) => $q->where('type', $v))
             ->when($filters['account_id'] ?? null, fn ($q, $v) => $q->where(fn ($q) => $q->where('account_id', $v)->orWhere('to_account_id', $v)))
             ->when($filters['category_id'] ?? null, fn ($q, $v) => $q->where('category_id', $v))
+            ->when($filters['tag_id'] ?? null, fn ($q, $v) => $q->whereHas('tags', fn ($t) => $t->where('tags.id', $v)))
             ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('note', 'like', "%{$v}%"));
 
-        $totals = (clone $query)->reorder()->ownMoney()->selectRaw('type, SUM(amount) as total')->groupBy('type')->pluck('total', 'type');
+        $totals = (clone $query)->reorder()->reportable()->selectRaw('type, SUM(amount) as total')->groupBy('type')->pluck('total', 'type');
 
         return Inertia::render('transactions/index', [
             'transactions' => $query->latest('date')->latest('id')->paginate(25)->withQueryString(),
@@ -43,24 +50,61 @@ class TransactionController extends Controller
             'filters' => [...$filters, 'month' => $month],
             'accounts' => $user->accounts()->orderBy('name')->get(['id', 'name']),
             'categories' => $user->categories()->orderBy('name')->get(['id', 'name', 'type', 'color']),
+            'tags' => $user->tags()->orderBy('name')->get(['id', 'name', 'color']),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $transaction = $request->user()->transactions()->create($this->validated($request));
-        $this->syncAttachment($request, $transaction);
+        $user = $request->user();
+        $data = $this->validated($request);
+        $splits = $request->validate([
+            'splits' => ['nullable', 'array', 'min:2', 'max:10'],
+            'splits.*.category_id' => ['required', Rule::exists('categories', 'id')->where('user_id', $user->id)],
+            'splits.*.amount' => ['required', 'integer', 'min:1'],
+            'splits.*.note' => ['nullable', 'string', 'max:255'],
+        ])['splits'] ?? null;
+        abort_if($splits && $data['type'] === 'transfer', 422, 'Transfer tidak bisa dipecah.');
 
-        return back()->with('success', __('Transaksi disimpan.'));
+        DB::transaction(function () use ($request, $user, $data, $splits) {
+            // Pecah transaksi: satu struk → beberapa transaksi berkategori berbeda dengan kode grup sama
+            $rows = $splits
+                ? collect($splits)->map(fn ($s) => [...$data, 'category_id' => $s['category_id'], 'amount' => $s['amount'], 'note' => ($s['note'] ?? null) ?: ($data['note'] ?? null)])->all()
+                : [$data];
+            $group = $splits ? (string) Str::uuid() : null;
+
+            foreach ($rows as $i => $row) {
+                $transaction = $user->transactions()->create([...$this->applyRules($user, $row), 'split_group' => $group]);
+                $this->syncTags($request, $transaction);
+                if ($i === 0) {
+                    $this->syncAttachment($request, $transaction);
+                }
+            }
+        });
+
+        return back()->with('success', $splits ? __('Transaksi dipecah jadi :n.', ['n' => count($splits)]) : __('Transaksi disimpan.'));
     }
 
     public function update(Request $request, Transaction $transaction): RedirectResponse
     {
         $this->ensureOwner($transaction);
         $transaction->update($this->validated($request, $transaction));
+        $this->syncTags($request, $transaction);
         $this->syncAttachment($request, $transaction);
 
         return back()->with('success', __('Transaksi diperbarui.'));
+    }
+
+    /** Tebakan kategori & rekening dari aturan dan riwayat untuk catatan yang diketik (catat cepat). */
+    public function suggest(Request $request): JsonResponse
+    {
+        return response()->json((new SuggestionService($request->user()))->suggest((string) $request->query('note'), $request->query('type')));
+    }
+
+    /** Transaksi yang sering dicatat (90 hari terakhir) untuk tombol satu-ketuk. */
+    public function frequent(Request $request): JsonResponse
+    {
+        return response()->json((new SuggestionService($request->user()))->frequent());
     }
 
     /** Tampilkan bukti transaksi (hanya pemiliknya). */
@@ -76,6 +120,52 @@ class TransactionController extends Controller
         );
     }
 
+    public function destroy(Transaction $transaction): RedirectResponse
+    {
+        $this->ensureOwner($transaction);
+        $transaction->delete();
+
+        return back()->with('success', __('Transaksi dihapus.'));
+    }
+
+    /**
+     * Aturan otomatis: catatan cocok kata kunci → kategori (bila belum dipilih) dan tautan ke Biaya Bulanan,
+     * supaya mis. "PLN" langsung tercatat sebagai pembayaran tagihan listrik bulan itu.
+     */
+    private function applyRules($user, array $row): array
+    {
+        if ($row['type'] === 'transfer') {
+            return $row;
+        }
+        $rule = AutoRule::match($user->rules()->get(), $row['note'] ?? null);
+        if (! $rule) {
+            return $row;
+        }
+        if (empty($row['category_id']) && $rule->category_id) {
+            $row['category_id'] = $rule->category_id;
+        }
+        if ($row['type'] === 'expense' && $rule->recurringItem?->activeIn(substr($row['date'], 0, 7))) {
+            $row['recurring_item_id'] = $rule->recurring_item_id;
+        }
+
+        return $row;
+    }
+
+    private function syncTags(Request $request, Transaction $transaction): void
+    {
+        if (! $request->has('tags') && ! $request->boolean('tags_present')) {
+            return;
+        }
+        $names = collect($request->input('tags', []))->map(fn ($n) => trim(mb_substr((string) $n, 0, 50)))->filter()->unique(fn ($n) => mb_strtolower($n));
+        $user = $request->user();
+        $existing = $user->tags()->get();
+        $ids = $names->map(fn ($name) => ($existing->first(fn ($t) => mb_strtolower($t->name) === mb_strtolower($name))
+            ?? $user->tags()->create(['name' => $name, 'color' => self::TAG_COLORS[$existing->count() % count(self::TAG_COLORS)]]))->id);
+        $transaction->tags()->sync($ids->all());
+    }
+
+    private const TAG_COLORS = ['#0ea5e9', '#f97316', '#8b5cf6', '#10b981', '#ec4899', '#eab308', '#64748b'];
+
     private function syncAttachment(Request $request, Transaction $transaction): void
     {
         if ($request->hasFile('attachment')) {
@@ -85,14 +175,6 @@ class TransactionController extends Controller
         }
     }
 
-    public function destroy(Transaction $transaction): RedirectResponse
-    {
-        $this->ensureOwner($transaction);
-        $transaction->delete();
-
-        return back()->with('success', __('Transaksi dihapus.'));
-    }
-
     private function validated(Request $request, ?Transaction $existing = null): array
     {
         $userId = $request->user()->id;
@@ -100,25 +182,35 @@ class TransactionController extends Controller
         $keep = array_filter([$existing?->account_id, $existing?->to_account_id]);
         $ownAccount = Rule::exists('accounts', 'id')->where('user_id', $userId)
             ->where(fn ($q) => $q->where('is_archived', false)->orWhereIn('id', $keep ?: [0]));
+        $splitting = ! $existing && $request->filled('splits');
 
         $data = $request->validate([
             'type' => ['required', 'in:income,expense,transfer'],
             'account_id' => ['required', $ownAccount],
             'to_account_id' => ['nullable', 'required_if:type,transfer', 'different:account_id', $ownAccount],
-            'category_id' => ['nullable', 'required_unless:type,transfer', Rule::exists('categories', 'id')->where('user_id', $userId)],
-            'amount' => ['required', 'integer', 'min:1'],
+            // Kategori boleh kosong bila nanti diisi aturan otomatis; dicek lagi setelah aturan diterapkan
+            'category_id' => ['nullable', Rule::exists('categories', 'id')->where('user_id', $userId)],
+            'amount' => [$splitting ? 'nullable' : 'required', 'integer', 'min:1'],
             'date' => ['required', 'date'],
             'note' => ['nullable', 'string', 'max:255'],
+            'tags' => ['nullable', 'array', 'max:10'],
+            'tags.*' => ['string', 'max:50'],
             // Bukti opsional: foto kamera / gambar / PDF, maks 10 MB
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,heic,heif,pdf', 'max:10240'],
             'remove_attachment' => ['nullable', 'boolean'],
         ]);
-        unset($data['attachment'], $data['remove_attachment']);
+        unset($data['attachment'], $data['remove_attachment'], $data['tags']);
 
         if ($data['type'] === 'transfer') {
             $data['category_id'] = null;
         } else {
             $data['to_account_id'] = null;
+            if (! $splitting && empty($data['category_id'])) {
+                $matched = AutoRule::match($request->user()->rules()->get(), $data['note'] ?? null)?->category_id;
+                if (! $matched) {
+                    throw ValidationException::withMessages(['category_id' => __('validation.required', ['attribute' => __('validation.attributes.category_id')])]);
+                }
+            }
         }
 
         return $data;

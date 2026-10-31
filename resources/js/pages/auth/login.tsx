@@ -1,6 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
-import { LoaderCircle } from 'lucide-react';
-import { FormEventHandler } from 'react';
+import { Fingerprint, LoaderCircle } from 'lucide-react';
+import { FormEventHandler, useState } from 'react';
 
 import InputError from '@/components/input-error';
 import LanguageTabs from '@/components/language-tabs';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
 import { t } from '@/lib/i18n';
+import { loginWithPasskey, passkeySupported } from '@/lib/webauthn';
 
 type LoginForm = {
     email: string;
@@ -21,9 +22,12 @@ type LoginForm = {
 interface LoginProps {
     status?: string;
     canResetPassword: boolean;
+    canRegister: boolean;
 }
 
-export default function Login({ status, canResetPassword }: LoginProps) {
+export default function Login({ status, canResetPassword, canRegister }: LoginProps) {
+    const biometric = passkeySupported();
+    const [passkeyError, setPasskeyError] = useState('');
     const { data, setData, post, processing, errors, reset } = useForm<LoginForm>({
         email: '',
         password: '',
@@ -90,14 +94,32 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                         {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
                         {t('Masuk|login')}
                     </Button>
+                    {biometric && (
+                        <>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => {
+                                    setPasskeyError('');
+                                    loginWithPasskey(setPasskeyError).catch(() => setPasskeyError(t('Login biometrik dibatalkan.')));
+                                }}
+                            >
+                                <Fingerprint /> {t('Masuk dengan sidik jari / Face ID')}
+                            </Button>
+                            <InputError message={passkeyError} />
+                        </>
+                    )}
                 </div>
 
-                <div className="text-muted-foreground text-center text-sm">
-                    {t('Belum punya akun?')}{' '}
-                    <TextLink href={route('register')} tabIndex={5}>
-                        {t('Daftar')}
-                    </TextLink>
-                </div>
+                {canRegister && (
+                    <div className="text-muted-foreground text-center text-sm">
+                        {t('Belum punya akun?')}{' '}
+                        <TextLink href={route('register')} tabIndex={5}>
+                            {t('Daftar')}
+                        </TextLink>
+                    </div>
+                )}
             </form>
 
             {status && <div className="mb-4 text-center text-sm font-medium text-green-600">{status}</div>}

@@ -77,5 +77,8 @@
     "Cocokkan saldo: :names belum direkonsiliasi lebih dari 7 hari": "Reconcile balances: :names not reconciled for more than 7 days",
     "Backup database tersimpan di storage/app/backups.": "Database backup saved to storage/app/backups.",
     "Backup gagal: :error": "Backup failed: :error",
-    "Tautan atur ulang akan dikirim jika akun terdaftar.": "A reset link will be sent if the account exists."
+    "Tautan atur ulang akan dikirim jika akun terdaftar.": "A reset link will be sent if the account exists.",
+    ":name masih punya :count transaksi. Arsipkan saja agar riwayat & saldo rekening lain tetap utuh.": ":name still has :count transactions. Archive it instead so the history and other account balances stay intact.",
+    "Tanggal sebelum piutang dimulai (:month).": "The date is before the receivable started (:month).",
+    "Pokok :amount melebihi sisa pokok :remaining.": "Principal :amount exceeds the remaining principal :remaining."
 }

@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Account extends Model
 {
+    use LogsActivity;
+
     protected $fillable = ['name', 'type', 'initial_balance', 'color', 'is_emergency_fund', 'is_archived', 'last_reconciled_at', 'last_reconciled_balance'];
 
     protected function casts(): array

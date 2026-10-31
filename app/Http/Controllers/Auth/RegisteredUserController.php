@@ -17,10 +17,21 @@ use Inertia\Response;
 class RegisteredUserController extends Controller
 {
     /**
+     * Aplikasi keuangan pribadi: pendaftaran hanya terbuka untuk akun pertama,
+     * atau bila APP_REGISTRATION=true di .env (mis. untuk menambah akun keluarga).
+     */
+    public static function isOpen(): bool
+    {
+        return config('app.registration') || User::query()->doesntExist();
+    }
+
+    /**
      * Show the registration page.
      */
     public function create(): Response
     {
+        abort_unless(self::isOpen(), 404);
+
         return Inertia::render('auth/register');
     }
 
@@ -31,6 +42,8 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        abort_unless(self::isOpen(), 404);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,

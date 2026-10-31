@@ -26,7 +26,7 @@ class DashboardController extends Controller
 
         $spentByCategory = $user->transactions()
             ->where('type', 'expense')
-            ->ownMoney()
+            ->reportable()
             ->where('date', '>=', $monthStart)
             ->selectRaw('category_id, SUM(amount) as total')
             ->groupBy('category_id')
@@ -76,7 +76,12 @@ class DashboardController extends Controller
             'accounts' => $finance->accounts(),
             'expenseByCategory' => $expenseByCategory,
             'budgets' => $budgets,
-            'goals' => $user->goals()->orderBy('priority')->orderBy('target_date')->get(),
+            'goals' => $finance->goals(),
+            'netWorth' => $finance->netWorthHistory(12),
+            // Target dana darurat = N bulan × rata-rata pengeluaran (N diatur di Pengaturan → Tampilan)
+            'emergencyTarget' => ['months' => $user->emergency_months, 'monthly' => $avg['expense'], 'amount' => $avg['expense'] * $user->emergency_months],
+            'reviewReady' => now()->day <= 7 && $user->transactions()->whereBetween('date', [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()])->exists()
+                ? now()->subMonth()->format('Y-m') : null,
             'recentTransactions' => $user->transactions()
                 ->with(['account:id,name', 'toAccount:id,name', 'category:id,name,color'])
                 ->latest('date')->latest('id')->limit(6)->get(),

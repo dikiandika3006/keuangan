@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { compact, formatDate, monthLabel, percent, rupiah, today } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { type Receivable, type ReceivableSchedule } from '@/types/finance';
 import { Head, useForm } from '@inertiajs/react';
@@ -41,7 +42,8 @@ const empty: FormData = {
     note: '',
 };
 
-type ReceiveData = { schedule_id: string; account_id: string; amount: number | ''; date: string };
+type ReceiveMode = 'principal' | 'auto';
+type ReceiveData = { schedule_id: string; mode: ReceiveMode; account_id: string; amount: number | ''; date: string };
 
 const outstanding = (s: ReceivableSchedule) => Math.max(0, s.interest_due + s.principal_due - s.interest_received - s.principal_received);
 
@@ -49,9 +51,10 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Receivable | null>(null);
     const form = useForm<FormData>(empty);
-    const [receiveFor, setReceiveFor] = useState<{ r: Receivable; s: ReceivableSchedule } | null>(null);
+    // s = null → tarik/terima langsung dari kartu; jadwal dipilih otomatis dari bulan tanggal terima
+    const [receiveFor, setReceiveFor] = useState<{ r: Receivable; s: ReceivableSchedule | null } | null>(null);
     const defaultAccount = useDefaultAccountId();
-    const receive = useForm<ReceiveData>({ schedule_id: '', account_id: '', amount: '', date: today() });
+    const receive = useForm<ReceiveData>({ schedule_id: '', mode: 'auto', account_id: '', amount: '', date: today() });
 
     const openForm = (r: Receivable | null) => {
         setEditing(r);
@@ -75,9 +78,13 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
         setOpen(true);
     };
 
-    const openReceive = (r: Receivable, s: ReceivableSchedule) => {
+    const openReceive = (r: Receivable, s: ReceivableSchedule | null) => {
         receive.clearErrors();
-        receive.setData({ schedule_id: String(s.id), account_id: defaultAccount, amount: outstanding(s), date: today() });
+        receive.setData(
+            s
+                ? { schedule_id: String(s.id), mode: 'auto', account_id: defaultAccount, amount: outstanding(s), date: today() }
+                : { schedule_id: '', mode: 'principal', account_id: defaultAccount, amount: '', date: today() },
+        );
         setReceiveFor({ r, s });
     };
 
@@ -183,6 +190,9 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                                     </div>
                                 </div>
                                 <ProgressBar className="mt-2" value={percent(r.principal - r.remaining, r.principal)} color="#6366f1" />
+                                <Button size="sm" className="mt-3 w-full sm:w-auto" onClick={() => openReceive(r, null)} disabled={r.remaining <= 0}>
+                                    <HandCoins /> {t('Tarik / Terima')}
+                                </Button>
 
                                 <div className="mt-3 overflow-x-auto">
                                     <table className="w-full min-w-[480px] text-sm">
@@ -223,6 +233,23 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                                         </tbody>
                                     </table>
                                 </div>
+                                {r.history.length > 0 && (
+                                    <div className="mt-3 border-t pt-2">
+                                        <div className="text-muted-foreground mb-1 text-xs font-medium">{t('Uang masuk terakhir')}</div>
+                                        <ul className="divide-y text-sm">
+                                            {r.history.map((h) => (
+                                                <li key={h.id} className="flex items-center justify-between gap-2 py-1.5">
+                                                    <span className="min-w-0 truncate">
+                                                        {formatDate(h.date, { day: 'numeric', month: 'short', year: 'numeric' })} ·{' '}
+                                                        {h.kind === 'interest' ? t('Bunga') : t('Tarik pokok')}
+                                                        {h.account && <span className="text-muted-foreground"> → {h.account}</span>}
+                                                    </span>
+                                                    <span className="shrink-0 font-medium text-emerald-600 tabular-nums">+{rupiah(h.amount)}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
                             </div>
                         );
                     })
@@ -311,17 +338,34 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                 onOpenChange={(o) => !o && setReceiveFor(null)}
                 title={t('Terima dari :name', { name: receiveFor?.r.counterparty ?? '' })}
                 description={
-                    receiveFor
+                    receiveFor?.s
                         ? t('Jadwal :month. Dialokasikan ke bunga dulu, sisanya ke pokok.', { month: monthLabel(receiveFor.s.period, 'long') })
-                        : undefined
+                        : t('Sisa pokok :amount. Dicatat langsung sebagai uang masuk ke rekening yang dipilih.', {
+                              amount: rupiah(receiveFor?.r.remaining ?? 0),
+                          })
                 }
                 processing={receive.processing}
-                onSubmit={() =>
-                    receiveFor &&
-                    receive.post(route('receivables.receive', receiveFor.r.id), { preserveScroll: true, onSuccess: () => setReceiveFor(null) })
-                }
+                onSubmit={() => {
+                    if (!receiveFor) return;
+                    receive.transform((d) => ({ ...d, schedule_id: d.schedule_id || null }));
+                    receive.post(route('receivables.receive', receiveFor.r.id), { preserveScroll: true, onSuccess: () => setReceiveFor(null) });
+                }}
             >
-                {receiveFor && (
+                {receiveFor && !receiveFor.s && (
+                    <div className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1">
+                        {(['principal', 'auto'] as const).map((m) => (
+                            <button
+                                key={m}
+                                type="button"
+                                className={cn('rounded-md py-1.5 text-sm font-medium', receive.data.mode === m && 'bg-background shadow-sm')}
+                                onClick={() => receive.setData('mode', m)}
+                            >
+                                {m === 'principal' ? t('Tarik pokok') : t('Bunga + pokok')}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                {receiveFor?.s && (
                     <div className="bg-muted/50 grid grid-cols-2 gap-2 rounded-lg p-3 text-sm">
                         <span className="text-muted-foreground">{t('Bunga belum diterima')}</span>
                         <span className="text-right tabular-nums">
@@ -344,6 +388,13 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                 <Field label={t('Masuk ke rekening')} error={receive.errors.account_id}>
                     <AccountSelect value={receive.data.account_id} onChange={(v) => receive.setData('account_id', v)} />
                 </Field>
+                {receiveFor && !receiveFor.s && (
+                    <p className="text-muted-foreground text-xs">
+                        {receive.data.mode === 'principal'
+                            ? t('Seluruh nominal mengurangi sisa pokok. Bunga bulan berikutnya otomatis dihitung dari sisa pokok baru.')
+                            : t('Bunga bulan tanggal terima dibayar dulu, sisanya mengurangi pokok.')}
+                    </p>
+                )}
             </FormDialog>
         </AppLayout>
     );

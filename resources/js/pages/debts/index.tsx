@@ -43,7 +43,7 @@ const empty: FormData = {
     tenor_months: '',
 };
 
-type PayData = { amount: number | ''; account_id: string; date: string; installment_id: string };
+type PayData = { amount: number | ''; interest: number | ''; account_id: string; date: string; installment_id: string };
 
 /** Sisa bulan & tanggal lunas: dari jadwal cicilan bila ada, kalau tidak dari estimasi anuitas. */
 function payoff(d: Debt): { months: number | null; label: string } {
@@ -62,7 +62,7 @@ export default function Debts({ debts }: { debts: Debt[] }) {
     const form = useForm<FormData>(empty);
     const [payFor, setPayFor] = useState<Debt | null>(null);
     const defaultAccount = useDefaultAccountId();
-    const pay = useForm<PayData>({ amount: '', account_id: '', date: today(), installment_id: '' });
+    const pay = useForm<PayData>({ amount: '', interest: '', account_id: '', date: today(), installment_id: '' });
 
     const openForm = (d: Debt | null) => {
         setEditing(d);
@@ -91,6 +91,7 @@ export default function Debts({ debts }: { debts: Debt[] }) {
         pay.clearErrors();
         pay.setData({
             amount: next?.amount ?? (d.monthly_payment || ''),
+            interest: d.interest_estimate ?? '',
             account_id: defaultAccount,
             date: today(),
             installment_id: next ? String(next.id) : '',
@@ -275,13 +276,14 @@ export default function Debts({ debts }: { debts: Debt[] }) {
                 title={t('Bayar :name', { name: payFor?.name ?? '' })}
                 description={t('Dicatat sebagai transaksi pengeluaran dari rekening yang dipilih, dan cicilan ditandai lunas.')}
                 processing={pay.processing}
-                onSubmit={() =>
-                    payFor &&
+                onSubmit={() => {
+                    if (!payFor) return;
+                    pay.transform((d) => ({ ...d, interest: d.interest === '' ? null : d.interest }));
                     pay.post(route('debts.pay', payFor.id), {
                         preserveScroll: true,
                         onSuccess: () => setPayFor(null),
-                    })
-                }
+                    });
+                }}
             >
                 {payFor?.installments?.length ? (
                     <Field label={t('Cicilan')} error={pay.errors.installment_id}>
@@ -320,6 +322,17 @@ export default function Debts({ debts }: { debts: Debt[] }) {
                 </div>
                 <Field label={t('Dari rekening')} error={pay.errors.account_id}>
                     <AccountSelect value={pay.data.account_id} onChange={(v) => pay.setData('account_id', v)} />
+                </Field>
+                <Field label={t('Porsi bunga (opsional)')} error={pay.errors.interest}>
+                    <MoneyInput value={pay.data.interest} onChange={(v) => pay.setData('interest', v)} />
+                    <p className="text-muted-foreground text-xs">
+                        {pay.data.interest === ''
+                            ? t('Kosongkan bila tidak tahu: seluruh cicilan dicatat sebagai pengeluaran.')
+                            : t('Bunga :interest dicatat sebagai pengeluaran, pokok :principal sebagai pelunasan utang (bukan pengeluaran).', {
+                                  interest: rupiah(Math.min(Number(pay.data.interest), Number(pay.data.amount) || 0)),
+                                  principal: rupiah(Math.max(0, (Number(pay.data.amount) || 0) - Number(pay.data.interest))),
+                              })}
+                    </p>
                 </Field>
             </FormDialog>
         </AppLayout>

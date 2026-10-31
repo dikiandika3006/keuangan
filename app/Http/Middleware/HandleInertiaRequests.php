@@ -50,9 +50,11 @@ class HandleInertiaRequests extends Middleware
             'finance' => fn () => $request->user() ? [
                 'accounts' => $request->user()->accounts()->where('is_archived', false)->orderBy('name')->get(['id', 'name', 'type']),
                 'categories' => $request->user()->categories()->orderBy('name')->get(['id', 'name', 'type', 'color']),
+                'tags' => $request->user()->tags()->orderBy('name')->pluck('name'),
             ] : null,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
             ],
         ]);
     }

@@ -31,7 +31,7 @@ const tooltipStyle = { backgroundColor: 'var(--popover)', border: '1px solid var
 interface Props {
     scenarios: Scenario[];
     selectedId: number;
-    projection: { rows: ProjectionRow[]; summary: ProjectionSummary };
+    projection: { rows: ProjectionRow[]; summary: ProjectionSummary; sources: Record<DataSource, boolean> };
     comparison: { id: number; name: string; balances: Record<string, number> }[];
     defaults: Assumptions;
     employment: EmploymentStatus[];
@@ -41,12 +41,21 @@ interface Props {
 type MoneyKey = { [K in keyof Assumptions]: Assumptions[K] extends number ? K : never }[keyof Assumptions];
 type MonthKey = { [K in keyof Assumptions]: Assumptions[K] extends string | null ? K : never }[keyof Assumptions];
 
+/** Asumsi yang digantikan data asli bila menu Utang/Piutang sudah diisi, supaya tidak tercatat dua kali. */
+type DataSource = 'car' | 'house' | 'friend';
+
+const SOURCE_NOTES: Record<DataSource, string> = {
+    car: t('Cicilan mobil diambil dari menu Utang.'),
+    house: t('Cicilan rumah diambil dari menu Utang.'),
+    friend: t('Bunga & tarikan pokok diambil dari menu Piutang.'),
+};
+
 const GROUPS: {
     title: string;
     fields: (
-        | { key: MoneyKey; label: string }
-        | { key: MonthKey; label: string; month: true }
-        | { key: 'friend_interest_pct'; label: string; pct: true }
+        | { key: MoneyKey; label: string; source?: DataSource }
+        | { key: MonthKey; label: string; month: true; source?: DataSource }
+        | { key: 'friend_interest_pct'; label: string; pct: true; source?: DataSource }
     )[];
 }[] = [
     {
@@ -70,19 +79,19 @@ const GROUPS: {
     {
         title: t('Dana di teman'),
         fields: [
-            { key: 'friend_principal', label: t('Pokok di bulan awal') },
-            { key: 'friend_interest_pct', label: t('Bunga % / bln'), pct: true },
-            { key: 'friend_withdraw_during_car', label: t('Tarik pokok selama cicilan mobil') },
-            { key: 'friend_withdraw_after_car', label: t('Tarik pokok setelah mobil lunas') },
+            { key: 'friend_principal', label: t('Pokok di bulan awal'), source: 'friend' },
+            { key: 'friend_interest_pct', label: t('Bunga % / bln'), pct: true, source: 'friend' },
+            { key: 'friend_withdraw_during_car', label: t('Tarik pokok selama cicilan mobil'), source: 'friend' },
+            { key: 'friend_withdraw_after_car', label: t('Tarik pokok setelah mobil lunas'), source: 'friend' },
         ],
     },
     {
         title: t('Cicilan'),
         fields: [
-            { key: 'car_installment', label: t('Cicilan mobil') },
-            { key: 'car_last_month', label: t('Cicilan mobil terakhir'), month: true },
-            { key: 'house_installment', label: t('Cicilan rumah') },
-            { key: 'house_last_month', label: t('Cicilan rumah terakhir'), month: true },
+            { key: 'car_installment', label: t('Cicilan mobil'), source: 'car' },
+            { key: 'car_last_month', label: t('Cicilan mobil terakhir'), month: true, source: 'car' },
+            { key: 'house_installment', label: t('Cicilan rumah'), source: 'house' },
+            { key: 'house_last_month', label: t('Cicilan rumah terakhir'), month: true, source: 'house' },
         ],
     },
     {
@@ -108,6 +117,7 @@ const COLUMNS: { key: keyof ProjectionRow; label: string; group: 'in' | 'out' }[
     { key: 'recurring_in', label: t('Masuk tetap'), group: 'in' },
     { key: 'car', label: t('Mobil'), group: 'out' },
     { key: 'house', label: t('Rumah'), group: 'out' },
+    { key: 'debt', label: t('Utang lain'), group: 'out' },
     { key: 'school', label: t('Sekolah'), group: 'out' },
     { key: 'groceries', label: t('Belanja'), group: 'out' },
     { key: 'pelagic', label: t('Pelagic'), group: 'out' },
@@ -120,7 +130,7 @@ type ScenarioForm = { name: string; start_month: string; months: number; assumpt
 
 export default function Projection({ scenarios, selectedId, projection, comparison, defaults, employment, recurringItems }: Props) {
     const selected = scenarios.find((s) => s.id === selectedId) ?? scenarios[0];
-    const { rows, summary } = projection;
+    const { rows, summary, sources } = projection;
     const [editOpen, setEditOpen] = useState(false);
     const [newOpen, setNewOpen] = useState(false);
     const [jobOpen, setJobOpen] = useState(false);
@@ -451,51 +461,60 @@ export default function Projection({ scenarios, selectedId, projection, comparis
                         />
                     </Field>
                 </div>
-                {GROUPS.map((g) => (
-                    <fieldset key={g.title} className="grid gap-3 border-t pt-3">
-                        <legend className="text-muted-foreground pr-2 text-xs font-semibold tracking-wide uppercase">{g.title}</legend>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            {g.fields.map((f) => {
-                                const error = (form.errors as Record<string, string>)[`assumptions.${f.key}`];
-                                if ('month' in f) {
+                {GROUPS.map((g) => {
+                    const fields = g.fields.filter((f) => !(f.source && sources[f.source]));
+                    const notes = [...new Set(g.fields.map((f) => f.source).filter((s): s is DataSource => !!s && sources[s]))];
+                    return (
+                        <fieldset key={g.title} className="grid gap-3 border-t pt-3">
+                            <legend className="text-muted-foreground pr-2 text-xs font-semibold tracking-wide uppercase">{g.title}</legend>
+                            {notes.map((s) => (
+                                <p key={s} className="bg-muted text-muted-foreground rounded-md px-3 py-2 text-xs">
+                                    {SOURCE_NOTES[s]}
+                                </p>
+                            ))}
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                {fields.map((f) => {
+                                    const error = (form.errors as Record<string, string>)[`assumptions.${f.key}`];
+                                    if ('month' in f) {
+                                        return (
+                                            <Field key={f.key} label={f.label} error={error} htmlFor={`a-${f.key}`}>
+                                                <MonthPicker
+                                                    id={`a-${f.key}`}
+                                                    value={form.data.assumptions[f.key] ?? ''}
+                                                    onChange={(v) => setAssumption(f.key, v || null)}
+                                                    placeholder={t('Tidak ada')}
+                                                />
+                                            </Field>
+                                        );
+                                    }
+                                    if ('pct' in f) {
+                                        return (
+                                            <Field key={f.key} label={f.label} error={error} htmlFor={`a-${f.key}`}>
+                                                <Input
+                                                    id={`a-${f.key}`}
+                                                    inputMode="decimal"
+                                                    value={String(form.data.assumptions[f.key] ?? 0).replace('.', ',')}
+                                                    onChange={(e) => {
+                                                        const v = parseFloat(e.target.value.replace(',', '.'));
+                                                        setAssumption(f.key, Number.isFinite(v) ? v : 0);
+                                                    }}
+                                                />
+                                            </Field>
+                                        );
+                                    }
                                     return (
-                                        <Field key={f.key} label={f.label} error={error} htmlFor={`a-${f.key}`}>
-                                            <MonthPicker
-                                                id={`a-${f.key}`}
+                                        <Field key={f.key} label={f.label} error={error}>
+                                            <MoneyInput
                                                 value={form.data.assumptions[f.key] ?? ''}
-                                                onChange={(v) => setAssumption(f.key, v || null)}
-                                                placeholder={t('Tidak ada')}
+                                                onChange={(v) => setAssumption(f.key, v === '' ? 0 : v)}
                                             />
                                         </Field>
                                     );
-                                }
-                                if ('pct' in f) {
-                                    return (
-                                        <Field key={f.key} label={f.label} error={error} htmlFor={`a-${f.key}`}>
-                                            <Input
-                                                id={`a-${f.key}`}
-                                                inputMode="decimal"
-                                                value={String(form.data.assumptions[f.key] ?? 0).replace('.', ',')}
-                                                onChange={(e) => {
-                                                    const v = parseFloat(e.target.value.replace(',', '.'));
-                                                    setAssumption(f.key, Number.isFinite(v) ? v : 0);
-                                                }}
-                                            />
-                                        </Field>
-                                    );
-                                }
-                                return (
-                                    <Field key={f.key} label={f.label} error={error}>
-                                        <MoneyInput
-                                            value={form.data.assumptions[f.key] ?? ''}
-                                            onChange={(v) => setAssumption(f.key, v === '' ? 0 : v)}
-                                        />
-                                    </Field>
-                                );
-                            })}
-                        </div>
-                    </fieldset>
-                ))}
+                                })}
+                            </div>
+                        </fieldset>
+                    );
+                })}
             </FormDialog>
 
             <FormDialog

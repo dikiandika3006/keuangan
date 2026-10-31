@@ -1,3 +1,4 @@
+import { type FullFormDefaults, QuickEntry } from '@/components/finance/quick-entry';
 import { TransactionForm } from '@/components/finance/transaction-form';
 import { useSidebar } from '@/components/ui/sidebar';
 import { t } from '@/lib/i18n';
@@ -13,21 +14,22 @@ const items = [
     { title: t('Proyeksi'), url: '/projection', icon: LineChart },
 ];
 
-/** Navigasi bawah + tombol tambah transaksi, hanya tampil di layar kecil. */
+/** Navigasi bawah (HP) + tombol catat cepat; di layar besar tombol catat cepat melayang di pojok kanan bawah. */
 export function MobileNav() {
     const { url } = usePage();
     const { setOpenMobile } = useSidebar();
-    const [open, setOpen] = useState(false);
+    const [quick, setQuick] = useState(false);
+    const [full, setFull] = useState<FullFormDefaults | null>(null);
 
     return (
         <>
-            <nav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+            <nav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden print:hidden">
                 <div className="grid h-16 grid-cols-5 items-center">
                     {items.map((item, i) =>
                         item === null ? (
                             <div key={i} className="flex justify-center">
                                 <button
-                                    onClick={() => setOpen(true)}
+                                    onClick={() => setQuick(true)}
                                     className="-mt-6 flex size-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg active:scale-95"
                                     aria-label={t('Catat transaksi')}
                                 >
@@ -55,7 +57,16 @@ export function MobileNav() {
                     </button>
                 </div>
             </nav>
-            <TransactionForm open={open} onOpenChange={setOpen} />
+            <button
+                onClick={() => setQuick(true)}
+                className="fixed right-6 bottom-6 z-40 hidden size-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-95 md:flex print:hidden"
+                aria-label={t('Catat transaksi')}
+                title={t('Catat Cepat')}
+            >
+                <Plus className="size-7" />
+            </button>
+            <QuickEntry open={quick} onOpenChange={setQuick} onFullForm={setFull} />
+            <TransactionForm open={full !== null} onOpenChange={(o) => !o && setFull(null)} defaults={full ?? undefined} />
         </>
     );
 }

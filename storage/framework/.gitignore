@@ -9,3 +9,6 @@ schedule-*
 services.json
 migrated.hash
 migrate.lock
+tasks.json
+tasks.lock
+tasks.tick

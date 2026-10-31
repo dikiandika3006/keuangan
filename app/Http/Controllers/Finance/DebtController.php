@@ -20,6 +20,7 @@ class DebtController extends Controller
         $debts = $request->user()->debts()->with('installments')->orderByDesc('remaining_amount')->get()
             ->map(fn (Debt $d) => [
                 ...$d->toArray(),
+                'interest_estimate' => $d->interestEstimate(),
                 'installments' => $d->installments->map(fn (DebtInstallment $i) => [...$i->toArray(), 'status' => $i->status()]),
             ]);
 
@@ -56,6 +57,8 @@ class DebtController extends Controller
             'account_id' => [Rule::requiredIf($debt->hasSchedule()), 'nullable', Rule::exists('accounts', 'id')->where('user_id', $user->id)->where(fn ($q) => $q->where('is_archived', false))],
             'date' => ['nullable', 'date'],
             'installment_id' => ['nullable', Rule::exists('debt_installments', 'id')->where('debt_id', $debt->id)],
+            // Porsi bunga (biaya); sisanya pokok = pelunasan utang, bukan pengeluaran. Kosong = perkiraan dari bunga %.
+            'interest' => ['nullable', 'integer', 'min:0', 'lte:amount'],
         ]);
 
         DB::transaction(function () use ($user, $debt, $data) {
@@ -64,20 +67,34 @@ class DebtController extends Controller
                 : null;
             abort_if($debt->hasSchedule() && ! $installment, 422, 'Semua cicilan sudah lunas.');
 
+            $interest = $data['interest'] ?? $debt->interestEstimate();
+
             if (! empty($data['account_id'])) {
-                $user->transactions()->create([
-                    'type' => 'expense',
-                    'account_id' => $data['account_id'],
-                    'category_id' => Category::system($user, 'debt_installment')->id,
-                    'amount' => $data['amount'],
-                    'date' => $data['date'] ?? now()->toDateString(),
-                    'note' => $installment ? "Cicilan {$debt->name} ".$installment->period->locale(app()->getLocale())->translatedFormat('M Y') : "Bayar {$debt->name}",
-                    'debt_installment_id' => $installment?->id,
-                ]);
+                $note = $installment ? "Cicilan {$debt->name} ".$installment->period->locale(app()->getLocale())->translatedFormat('M Y') : "Bayar {$debt->name}";
+                // Bunga diketahui → dipisah: bunga = pengeluaran, pokok = pelunasan (tidak ikut rekap pengeluaran)
+                $parts = $interest === null
+                    ? [['debt_installment', $data['amount'], $note]]
+                    : [['debt_interest', min($interest, $data['amount']), "Bunga {$note}"], ['debt_principal', $data['amount'] - min($interest, $data['amount']), "Pokok {$note}"]];
+
+                foreach ($parts as [$key, $amount, $partNote]) {
+                    if ($amount <= 0) {
+                        continue;
+                    }
+                    $user->transactions()->create([
+                        'type' => 'expense',
+                        'account_id' => $data['account_id'],
+                        'category_id' => Category::system($user, $key)->id,
+                        'amount' => $amount,
+                        'date' => $data['date'] ?? now()->toDateString(),
+                        'note' => $partNote,
+                        'debt_installment_id' => $installment?->id,
+                    ]);
+                }
             }
 
             if (! $installment) {
-                $debt->update(['remaining_amount' => max(0, $debt->remaining_amount - $data['amount'])]);
+                // Utang tanpa jadwal: yang mengurangi sisa utang hanya porsi pokoknya
+                $debt->update(['remaining_amount' => max(0, $debt->remaining_amount - ($data['amount'] - min($interest ?? 0, $data['amount'])))]);
             }
         });
 

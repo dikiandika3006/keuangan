@@ -156,3 +156,23 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* Cetak / simpan PDF: hanya isi halaman, tanpa menu & navigasi */
+@media print {
+    [data-sidebar='sidebar'],
+    [data-slot='sidebar-gap'],
+    [data-slot='sidebar-container'],
+    nav {
+        display: none !important;
+    }
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    main,
+    [data-slot='sidebar-inset'] {
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: 0 !important;
+    }
+}

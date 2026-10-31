@@ -19,5 +19,10 @@
     "Belum ada data": "No data yet",
     "Rata-rata": "Average",
     "Total": "Total",
-    "Klik nama bulan untuk melihat rekap bulan tersebut. Rata-rata dihitung dari bulan yang ada transaksinya.": "Tap a month name to see its recap. The average only counts months that have transactions."
+    "Klik nama bulan untuk melihat rekap bulan tersebut. Rata-rata dihitung dari bulan yang ada transaksinya.": "Tap a month name to see its recap. The average only counts months that have transactions.",
+    "Setor ke aset/investasi": "Deposited to assets/investments",
+    "Pencairan aset": "Asset withdrawals",
+    "Pokok piutang kembali": "Receivable principal returned",
+    "Pindah kantong, tidak dihitung sebagai pemasukan/pengeluaran:": "Moved between your own pots, not counted as income/expense:",
+    "Pelunasan pokok utang": "Debt principal repaid"
 }

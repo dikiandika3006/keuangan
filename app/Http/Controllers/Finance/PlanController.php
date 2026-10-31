@@ -27,7 +27,7 @@ class PlanController extends Controller
             'averages' => $finance->averages(),
             'recurringTotals' => $finance->recurringTotals(),
             'recurringItems' => $user->recurringItems()->whereIn('type', ['income', 'expense'])->orderBy('type')->orderByDesc('amount')->get(),
-            'goals' => $user->goals()->orderBy('priority')->orderBy('target_date')->get(),
+            'goals' => (new FinanceService($user))->goals(),
             'debts' => $user->debts()->where('remaining_amount', '>', 0)->get(),
         ]);
     }

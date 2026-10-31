@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsActivity;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Receivable extends Model
 {
+    use LogsActivity;
+
     protected $fillable = ['counterparty', 'principal', 'interest_pct', 'withdrawal', 'withdrawal_change_month', 'withdrawal_after', 'due_day', 'start_month', 'agreement_url', 'note'];
 
     protected function casts(): array

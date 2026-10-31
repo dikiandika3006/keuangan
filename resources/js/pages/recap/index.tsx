@@ -7,7 +7,7 @@ import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { ArrowDownRight, ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, PiggyBank, Receipt } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, PiggyBank, Printer, Receipt } from 'lucide-react';
 import { useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -45,6 +45,7 @@ interface TrendRow {
 interface Props {
     month: string;
     groups: Record<Kind, Group[]>;
+    moves: Partial<Record<keyof typeof MOVE_LABELS, number>>;
     transactions: Tx[];
     trend: { months: { key: string; label: string }[] } & Record<Kind, TrendRow[]>;
 }
@@ -181,7 +182,15 @@ function GroupSection({ kind, groups, transactions }: { kind: Kind; groups: Grou
     );
 }
 
-export default function Recap({ month, groups, transactions, trend }: Props) {
+const MOVE_LABELS = {
+    asset_deposit: t('Setor ke aset/investasi'),
+    asset_withdrawal: t('Pencairan aset'),
+    receivable_principal: t('Pokok piutang kembali'),
+    debt_principal: t('Pelunasan pokok utang'),
+};
+
+export default function Recap({ month, groups, moves, transactions, trend }: Props) {
+    const moveRows = (Object.keys(MOVE_LABELS) as (keyof typeof MOVE_LABELS)[]).filter((k) => (moves[k] ?? 0) > 0);
     const [trendKind, setTrendKind] = useState<Kind>('expense');
     const go = (m: string) => router.get(route('recap.index'), { month: m }, { preserveScroll: true, preserveState: true });
 
@@ -201,6 +210,18 @@ export default function Recap({ month, groups, transactions, trend }: Props) {
                 <PageHeader
                     title={t('Rekap Bulanan')}
                     description={t('Pemasukan dan pengeluaran per kategori dari data transaksi. Transfer antar rekening tidak dihitung.')}
+                    actions={
+                        <div className="flex gap-2 print:hidden">
+                            <Button variant="outline" asChild>
+                                <a href={route('export', { from: month, to: month })}>
+                                    <FileSpreadsheet /> {t('Excel')}
+                                </a>
+                            </Button>
+                            <Button variant="outline" onClick={() => window.print()}>
+                                <Printer /> {t('Cetak / PDF')}
+                            </Button>
+                        </div>
+                    }
                 />
 
                 <div className="flex items-center justify-between gap-2 rounded-xl border p-2">
@@ -246,6 +267,12 @@ export default function Recap({ month, groups, transactions, trend }: Props) {
                     />
                 </div>
                 <p className="text-muted-foreground -mt-2 text-xs">{t('Persentase kecil = perubahan dibanding bulan sebelumnya.')}</p>
+                {moveRows.length > 0 && (
+                    <p className="text-muted-foreground -mt-2 text-xs">
+                        {t('Pindah kantong, tidak dihitung sebagai pemasukan/pengeluaran:')}{' '}
+                        {moveRows.map((k) => `${MOVE_LABELS[k]} ${rupiah(moves[k] ?? 0)}`).join(' · ')}
+                    </p>
+                )}
 
                 <div className="grid gap-4 lg:grid-cols-2">
                     <GroupSection kind="income" groups={groups.income} transactions={transactions} />

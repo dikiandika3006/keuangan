@@ -34,5 +34,8 @@
     "dibayar :date": "paid :date",
     "tempo :date": "due :date",
     "Sembunyikan": "Hide",
-    "Lihat semua jadwal (:n)": "Show full schedule (:n)"
+    "Lihat semua jadwal (:n)": "Show full schedule (:n)",
+    "Porsi bunga (opsional)": "Interest portion (optional)",
+    "Kosongkan bila tidak tahu: seluruh cicilan dicatat sebagai pengeluaran.": "Leave empty if unknown: the whole installment is recorded as an expense.",
+    "Bunga :interest dicatat sebagai pengeluaran, pokok :principal sebagai pelunasan utang (bukan pengeluaran).": "Interest :interest is recorded as an expense, principal :principal as debt repayment (not an expense)."
 }

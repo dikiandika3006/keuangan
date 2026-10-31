@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Receivable;
 use App\Models\ReceivableSchedule;
+use App\Models\Transaction;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,6 +29,19 @@ class ReceivableController extends Controller
             return [
                 ...$r->toArray(),
                 'remaining' => $r->remainingPrincipal(),
+                // Riwayat uang masuk (bunga & tarikan pokok) terbaru
+                'history' => Transaction::query()
+                    ->whereIn('receivable_schedule_id', $r->schedules()->select('id'))
+                    ->with(['account:id,name', 'category:id,system_key'])
+                    ->latest('date')->latest('id')->limit(8)
+                    ->get()
+                    ->map(fn (Transaction $t) => [
+                        'id' => $t->id,
+                        'date' => $t->date->toDateString(),
+                        'amount' => $t->amount,
+                        'kind' => $t->category?->system_key === 'receivable_interest' ? 'interest' : 'principal',
+                        'account' => $t->account?->name,
+                    ]),
                 'schedules' => $r->schedules()->get()->map(function (ReceivableSchedule $s) {
                     $received = $s->received();
 
@@ -67,24 +83,41 @@ class ReceivableController extends Controller
     }
 
     /**
-     * Catat uang masuk (RCV-03, BR-08): dialokasikan ke bunga dulu, sisanya ke pokok,
-     * dicatat sebagai dua transaksi pemasukan bertaut jadwal bulan itu.
+     * Catat uang masuk (RCV-03, BR-08), langsung tanpa pengajuan. Mode 'auto': bunga bulan itu dulu, sisanya pokok;
+     * mode 'principal': tarikan pokok saja (mis. tarik dana di luar jadwal). Tanpa schedule_id, jadwal dipilih dari
+     * bulan tanggal terima. Dicatat sebagai transaksi pemasukan ke rekening pilihan, bertaut jadwal bulan itu.
      */
     public function receive(Request $request, Receivable $receivable): RedirectResponse
     {
         $this->ensureOwner($receivable);
         $user = $request->user();
         $data = $request->validate([
-            'schedule_id' => ['required', Rule::exists('receivable_schedules', 'id')->where('receivable_id', $receivable->id)],
+            'schedule_id' => ['nullable', Rule::exists('receivable_schedules', 'id')->where('receivable_id', $receivable->id)],
+            'mode' => ['nullable', 'in:auto,principal'],
             'account_id' => ['required', Rule::exists('accounts', 'id')->where('user_id', $user->id)->where(fn ($q) => $q->where('is_archived', false))],
             'amount' => ['required', 'integer', 'min:1'],
-            'date' => ['required', 'date'],
+            'date' => ['required', 'date', 'before_or_equal:today'],
         ]);
 
-        $schedule = ReceivableSchedule::findOrFail($data['schedule_id']);
+        $receivable->syncSchedule();
+        $schedule = ! empty($data['schedule_id'])
+            ? ReceivableSchedule::findOrFail($data['schedule_id'])
+            : $receivable->schedules()->where('period', CarbonImmutable::parse($data['date'])->startOfMonth()->toDateString())->first();
+        if (! $schedule) {
+            throw ValidationException::withMessages(['date' => __('Tanggal sebelum piutang dimulai (:month).', [
+                'month' => $receivable->start_month->locale(app()->getLocale())->translatedFormat('F Y'),
+            ])]);
+        }
+
         $received = $schedule->received();
-        $interest = min($data['amount'], max(0, $schedule->interest_due - $received['interest']));
+        $interest = ($data['mode'] ?? 'auto') === 'principal' ? 0 : min($data['amount'], max(0, $schedule->interest_due - $received['interest']));
         $principal = $data['amount'] - $interest;
+        if ($principal > $receivable->remainingPrincipal()) {
+            throw ValidationException::withMessages(['amount' => __('Pokok :amount melebihi sisa pokok :remaining.', [
+                'amount' => 'Rp'.number_format($principal, 0, ',', '.'),
+                'remaining' => 'Rp'.number_format($receivable->remainingPrincipal(), 0, ',', '.'),
+            ])]);
+        }
         $month = $schedule->period->locale(app()->getLocale())->translatedFormat('M Y');
 
         DB::transaction(function () use ($user, $data, $schedule, $interest, $principal, $receivable, $month) {

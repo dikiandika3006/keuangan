@@ -1,3 +1,4 @@
+import { currentMonth } from '@/components/finance/fixed-items-editor';
 import { MoneyInput } from '@/components/finance/money-input';
 import { ColorPicker, DeleteButton, Field, FormDialog, Page, PageHeader, ProgressBar, Section, StatCard } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: t('Anggaran'), href: '/budgets' }];
@@ -19,15 +20,27 @@ interface CategoryRow {
     type: 'income' | 'expense';
     color: string;
     budget: number | null;
+    /** Biaya tetap & cicilan bulan ini berkategori ini (dari Biaya Bulanan) */
+    fixed: number;
     spent: number;
 }
 
-export default function Budgets({ categories, monthLabel }: { categories: CategoryRow[]; monthLabel: string }) {
+/** Batas yang berlaku: anggaran yang diatur, minimal sebesar biaya tetapnya. */
+const limitOf = (c: CategoryRow) => (c.budget === null && c.fixed === 0 ? null : Math.max(c.budget ?? 0, c.fixed));
+
+function shiftMonth(month: string, delta: number) {
+    const [y, m] = month.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export default function Budgets({ month, categories, monthLabel }: { month: string; categories: CategoryRow[]; monthLabel: string }) {
+    const go = (m: string) => router.get(route('budgets.index'), { month: m }, { preserveScroll: true, preserveState: true });
     const expense = categories.filter((c) => c.type === 'expense');
     const income = categories.filter((c) => c.type === 'income');
-    const totalBudget = expense.reduce((s, c) => s + (c.budget ?? 0), 0);
+    const totalBudget = expense.reduce((s, c) => s + (limitOf(c) ?? 0), 0);
     const totalSpent = expense.reduce((s, c) => s + c.spent, 0);
-    const budgetedSpent = expense.filter((c) => c.budget).reduce((s, c) => s + c.spent, 0);
+    const budgetedSpent = expense.filter((c) => limitOf(c) !== null).reduce((s, c) => s + c.spent, 0);
 
     const [budgetFor, setBudgetFor] = useState<CategoryRow | null>(null);
     const [budgetValue, setBudgetValue] = useState<number | ''>('');
@@ -81,6 +94,21 @@ export default function Budgets({ categories, monthLabel }: { categories: Catego
                     description={t('Batas pengeluaran bulanan per kategori · :month', { month: monthLabel })}
                 />
 
+                <div className="flex items-center justify-between gap-2 rounded-xl border p-2">
+                    <Button variant="ghost" size="icon" onClick={() => go(shiftMonth(month, -1))} aria-label={t('Bulan sebelumnya')}>
+                        <ChevronLeft />
+                    </Button>
+                    <button className="text-sm font-semibold" onClick={() => go(currentMonth())} title={t('Kembali ke bulan ini')}>
+                        {monthLabel}
+                    </button>
+                    <Button variant="ghost" size="icon" onClick={() => go(shiftMonth(month, 1))} aria-label={t('Bulan berikutnya')}>
+                        <ChevronRight />
+                    </Button>
+                </div>
+                <p className="text-muted-foreground -mt-2 text-xs">
+                    {t('Biaya tetap & cicilan dari Biaya Bulanan otomatis jadi batas minimal kategorinya, jadi tidak perlu dianggarkan dua kali.')}
+                </p>
+
                 <div className="grid grid-cols-3 gap-3">
                     <StatCard label={t('Total Anggaran')} value={compact(totalBudget)} sub={rupiah(totalBudget)} />
                     <StatCard
@@ -106,8 +134,9 @@ export default function Budgets({ categories, monthLabel }: { categories: Catego
                 >
                     <ul className="divide-y">
                         {expense.map((c) => {
-                            const over = c.budget !== null && c.spent > c.budget;
-                            const p = c.budget ? percent(c.spent, c.budget) : 0;
+                            const limit = limitOf(c);
+                            const over = limit !== null && c.spent > limit;
+                            const p = limit ? percent(c.spent, limit) : 0;
                             return (
                                 <li key={c.id} className="py-3">
                                     <div className="flex items-center gap-3">
@@ -116,9 +145,24 @@ export default function Budgets({ categories, monthLabel }: { categories: Catego
                                             <div className="truncate text-sm font-medium">{c.name}</div>
                                             <div className={cn('text-muted-foreground text-xs tabular-nums', over && 'font-medium text-red-600')}>
                                                 {rupiah(c.spent)}
-                                                {c.budget ? t(' dari :amount', { amount: rupiah(c.budget) }) : t(' terpakai')}
+                                                {limit ? t(' dari :amount', { amount: rupiah(limit) }) : t(' terpakai')}
                                                 {over && t(' · melebihi anggaran!')}
                                             </div>
+                                            {c.fixed > 0 && (
+                                                <div
+                                                    className={cn(
+                                                        'text-muted-foreground text-xs tabular-nums',
+                                                        c.budget !== null && c.budget < c.fixed && 'text-amber-600',
+                                                    )}
+                                                >
+                                                    {c.budget !== null && c.budget < c.fixed
+                                                        ? t('Biaya tetap :amount lebih besar dari batas :budget', {
+                                                              amount: rupiah(c.fixed),
+                                                              budget: rupiah(c.budget),
+                                                          })
+                                                        : t('termasuk biaya tetap :amount', { amount: rupiah(c.fixed) })}
+                                                </div>
+                                            )}
                                         </div>
                                         <Button
                                             size="sm"
@@ -133,7 +177,7 @@ export default function Budgets({ categories, monthLabel }: { categories: Catego
                                         </Button>
                                         {actions(c)}
                                     </div>
-                                    {c.budget !== null && (
+                                    {limit !== null && (
                                         <ProgressBar className="mt-2" value={p} color={over ? '#ef4444' : p > 80 ? '#f59e0b' : '#10b981'} />
                                     )}
                                 </li>

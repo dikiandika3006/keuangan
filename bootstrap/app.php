@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RunDueTasks;
 use App\Http\Middleware\RunPendingMigrations;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             SetLocale::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            RunDueTasks::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

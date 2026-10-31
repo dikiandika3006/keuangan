@@ -41,7 +41,8 @@ class ReceivableSchedule extends Model
         $received ??= $this->received();
         $got = $received['interest'] + $received['principal'];
 
-        if ($got >= $this->interest_due + $this->principal_due) {
+        // Bunga & pokok dinilai terpisah: tarikan pokok besar di luar jadwal tidak membuat bunga bulan itu dianggap lunas
+        if ($received['interest'] >= $this->interest_due && $received['principal'] >= $this->principal_due) {
             return 'received';
         }
         if ($this->due_date->copy()->addDays(3)->lt(today())) {

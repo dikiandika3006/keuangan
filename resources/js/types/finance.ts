@@ -32,7 +32,9 @@ export interface Transaction {
     amount: number;
     date: string;
     note: string | null;
-    source?: 'manual' | 'reconcile';
+    source?: 'manual' | 'reconcile' | 'import';
+    split_group?: string | null;
+    tags?: { id: number; name: string; color: string }[];
     attachment_url?: string | null;
     attachment_name?: string | null;
     account?: { id: number; name: string; color?: string };
@@ -45,6 +47,10 @@ export interface Goal {
     name: string;
     target_amount: number;
     current_amount: number;
+    account_id: number | null;
+    asset_id: number | null;
+    /** Dana terkumpul mengikuti saldo rekening/dompet atau nilai aset ini */
+    linked: { type: 'account' | 'asset'; name: string } | null;
     target_date: string | null;
     priority: 1 | 2 | 3;
     color: string;
@@ -71,6 +77,8 @@ export interface Debt {
     remaining_amount: number;
     monthly_payment: number;
     interest_rate: number;
+    /** Perkiraan porsi bunga sekali bayar; null bila bunga 0% */
+    interest_estimate?: number | null;
     due_day: number | null;
     start_month: string | null;
     tenor_months: number | null;
@@ -104,6 +112,8 @@ export interface Receivable {
     note: string | null;
     remaining: number;
     schedules: ReceivableSchedule[];
+    /** Uang masuk terbaru: bunga atau tarikan pokok */
+    history: { id: number; date: string; amount: number; kind: 'interest' | 'principal'; account: string | null }[];
 }
 
 export type AssetKind = 'investment' | 'jht' | 'business' | 'property' | 'other';
@@ -167,6 +177,7 @@ export interface ProjectionRow {
     djitu: number;
     car: number;
     house: number;
+    debt: number;
     school: number;
     groceries: number;
     pelagic: number;
@@ -241,6 +252,7 @@ export interface Position {
     held: number;
     receivables: number;
     other_assets: number;
+    invested: number;
     investment: number;
     emergency_fund: number;
     emergency_fund_flagged: boolean;
@@ -268,5 +280,7 @@ export interface Paginated<T> {
     current_page: number;
     last_page: number;
     total: number;
+    prev_page_url?: string | null;
+    next_page_url?: string | null;
     links: { url: string | null; label: string; active: boolean }[];
 }

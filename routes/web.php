@@ -6,25 +6,46 @@ use App\Http\Controllers\Finance\BudgetController;
 use App\Http\Controllers\Finance\CalendarController;
 use App\Http\Controllers\Finance\DashboardController;
 use App\Http\Controllers\Finance\DebtController;
+use App\Http\Controllers\Finance\ExportController;
 use App\Http\Controllers\Finance\GoalController;
+use App\Http\Controllers\Finance\ImportController;
 use App\Http\Controllers\Finance\MonthlyBillController;
 use App\Http\Controllers\Finance\PlanController;
 use App\Http\Controllers\Finance\ProjectionController;
 use App\Http\Controllers\Finance\RecapController;
 use App\Http\Controllers\Finance\ReceivableController;
+use App\Http\Controllers\Finance\ReviewController;
 use App\Http\Controllers\Finance\SetupController;
 use App\Http\Controllers\Finance\TitipanController;
 use App\Http\Controllers\Finance\TransactionController;
+use App\Services\TaskRunner;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => auth()->check() ? redirect()->route('dashboard') : redirect()->route('login'))->name('home');
 
+// Pemicu tugas berkala untuk cron eksternal (cron-job.org / cron Hostinger lewat URL); token diturunkan dari APP_KEY
+Route::get('cron/{token}', function (string $token) {
+    abort_unless(hash_equals(TaskRunner::cronToken(), $token), 404);
+
+    return response()->json(TaskRunner::runDue());
+})->middleware('throttle:10,1')->name('cron.run');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::resource('accounts', AccountController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('transactions/suggest', [TransactionController::class, 'suggest'])->name('transactions.suggest');
+    Route::get('transactions/frequent', [TransactionController::class, 'frequent'])->name('transactions.frequent');
     Route::get('transactions/{transaction}/attachment', [TransactionController::class, 'attachment'])->name('transactions.attachment');
+
+    Route::get('import', [ImportController::class, 'index'])->name('import.index');
+    Route::post('import/preview', [ImportController::class, 'preview'])->name('import.preview');
+    Route::post('import', [ImportController::class, 'store'])->name('import.store');
+    Route::delete('import', [ImportController::class, 'cancel'])->name('import.cancel');
+
+    Route::get('export', ExportController::class)->name('export');
+    Route::get('review', ReviewController::class)->name('review.index');
     Route::resource('transactions', TransactionController::class)->only(['index', 'store', 'update', 'destroy']);
 
     Route::get('budgets', [BudgetController::class, 'index'])->name('budgets.index');

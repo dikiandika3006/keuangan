@@ -54,6 +54,7 @@ return [
         'symbols' => ':Attribute harus mengandung simbol.',
         'uncompromised' => ':Attribute ini pernah muncul di kebocoran data. Pilih :attribute lain.',
     ],
+    'prohibits' => ':Attribute tidak boleh diisi bersama :other.',
     'regex' => 'Format :attribute tidak valid.',
     'required' => ':Attribute wajib diisi.',
     'required_if' => ':Attribute wajib diisi bila :other adalah :value.',

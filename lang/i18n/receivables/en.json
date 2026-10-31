@@ -37,5 +37,10 @@
     "Bunga belum diterima": "Interest not yet received",
     "Pokok belum diterima": "Principal not yet received",
     "Nominal diterima": "Amount received",
-    "Masuk ke rekening": "Into account"
+    "Masuk ke rekening": "Into account",
+    "Tarik / Terima": "Withdraw / Receive",
+    "Uang masuk terakhir": "Latest money received",
+    "Sisa pokok :amount. Dicatat langsung sebagai uang masuk ke rekening yang dipilih.": "Remaining principal :amount. Recorded right away as money in to the chosen account.",
+    "Seluruh nominal mengurangi sisa pokok. Bunga bulan berikutnya otomatis dihitung dari sisa pokok baru.": "The whole amount reduces the remaining principal. Next month's interest is calculated from the new remaining principal.",
+    "Bunga bulan tanggal terima dibayar dulu, sisanya mengurangi pokok.": "Interest for the month of the received date is paid first, the rest reduces the principal."
 }

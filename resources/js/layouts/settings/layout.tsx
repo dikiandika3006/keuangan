@@ -22,6 +22,10 @@ const sidebarNavItems: NavItem[] = [
         url: '/settings/password',
         icon: null,
     },
+    { title: t('Keamanan'), url: '/settings/security', icon: null },
+    { title: t('Notifikasi'), url: '/settings/notifications', icon: null },
+    { title: t('Backup & Ekspor'), url: '/settings/backup', icon: null },
+    { title: t('Aturan Otomatis'), url: '/settings/rules', icon: null },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
@@ -29,7 +33,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
     return (
         <div className="px-4 py-6">
-            <Heading title={t('Pengaturan')} description={t('Tampilan aplikasi, profil, dan kata sandi')} />
+            <Heading title={t('Pengaturan')} description={t('Tampilan, akun, keamanan, notifikasi, dan backup')} />
 
             <div className="flex flex-col space-y-8 lg:flex-row lg:space-y-0 lg:space-x-12">
                 <aside className="w-full max-w-xl lg:w-48">

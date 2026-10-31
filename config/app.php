@@ -78,6 +78,9 @@ return [
     |
     */
 
+    // Pendaftaran akun baru setelah akun pertama (default tertutup)
+    'registration' => (bool) env('APP_REGISTRATION', false),
+
     'locale' => env('APP_LOCALE', 'id'),
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),

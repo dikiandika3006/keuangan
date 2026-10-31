@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\Goal;
 use App\Models\Transaction;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -50,7 +51,7 @@ class FinanceService
 
         $rows = $this->user->transactions()
             ->whereIn('type', ['income', 'expense'])
-            ->ownMoney()
+            ->reportable()
             ->where('date', '>=', $start->toDateString())
             ->selectRaw("$monthExpr as month, type, SUM(amount) as total")
             ->groupBy('month', 'type')
@@ -156,23 +157,28 @@ class FinanceService
         $liquid = (int) $accounts->where('type', '!=', 'investment')->sum('balance');
         $investment = (int) $accounts->where('type', 'investment')->sum('balance');
         $flagged = $accounts->where('is_emergency_fund', true);
-        $emergency = $flagged->isNotEmpty() ? (int) $flagged->sum('balance') : $liquid;
         $totalDebt = (int) $debts->sum('remaining_amount');
         // Dompet Tujuan (kesehatan, tabungan anak, dll.) sudah dialokasikan, bukan uang siap pakai
         $pockets = (int) $accounts->where('type', 'pocket')->where('is_emergency_fund', false)->sum('balance');
 
         // Uang titipan/usaha yang masih mengendap di rekening: milik orang lain
         $held = (int) $this->heldFunds($asOf)->sum(fn ($f) => max(0, $f['balance']));
+        // Tanpa rekening bertanda dana darurat: pakai uang likuid milik sendiri yang belum dialokasikan
+        $emergency = $flagged->isNotEmpty() ? (int) $flagged->sum('balance') : max(0, $liquid - $pockets - $held);
 
         if ($asOf !== null) {
             return ['liquid' => $liquid, 'investment' => $investment, 'pockets' => $pockets, 'held' => $held];
         }
 
         $receivables = (int) $this->user->receivables()->get()->sum(fn ($r) => $r->remainingPrincipal());
-        $assets = (int) $this->user->assets()->with('latestValuation')->get()->sum(fn ($a) => $a->currentValue());
+        $assetList = $this->user->assets()->with('latestValuation')->get();
+        $assets = (int) $assetList->sum(fn ($a) => $a->currentValue());
+        // Aset investasi (reksa dana, Pelagic, JHT) ikut dihitung di porsi investasi, bukan hanya rekening investasi
+        $investedAssets = (int) $assetList->whereIn('kind', ['investment', 'jht'])->sum(fn ($a) => $a->currentValue());
 
         return [
-            'total_assets' => $liquid + $investment + $receivables + $assets,
+            // Uang titipan ada di rekening tetapi milik orang lain, jadi tidak dihitung sebagai aset
+            'total_assets' => $liquid - $held + $investment + $receivables + $assets,
             'liquid' => $liquid,
             'spendable' => $liquid - ($flagged->isNotEmpty() ? $emergency : 0) - $pockets - $held,
             'pockets' => $pockets,
@@ -180,12 +186,84 @@ class FinanceService
             'investment' => $investment,
             'receivables' => $receivables,
             'other_assets' => $assets,
+            'invested' => $investment + $investedAssets,
             'emergency_fund' => $emergency,
             'emergency_fund_flagged' => $flagged->isNotEmpty(),
             'total_debt' => $totalDebt,
             'monthly_debt_payment' => (int) $debts->where('remaining_amount', '>', 0)->sum('monthly_payment'),
-            'net_worth' => $liquid + $investment + $receivables + $assets - $totalDebt - $held,
+            'net_worth' => $liquid - $held + $investment + $receivables + $assets - $totalDebt,
         ];
+    }
+
+    /**
+     * Kekayaan bersih di akhir tiap bulan, N bulan terakhir (bulan ini = posisi hari ini).
+     * Saldo rekening, nilai aset & sisa pokok piutang dihitung mundur per tanggal; utang berjadwal dari cicilan
+     * yang belum lunas pada tanggal itu, utang tanpa jadwal memakai sisa saat ini (tidak punya riwayat).
+     *
+     * @return list<array{month: string, label: string, assets: int, debt: int, net_worth: int}>
+     */
+    public function netWorthHistory(int $months = 12): array
+    {
+        $debts = $this->user->debts()->with('installments')->get();
+        $receivables = $this->user->receivables()->with('schedules')->get();
+        $assets = $this->user->assets()->with('valuations')->get();
+        $principalTx = $this->user->transactions()
+            ->whereNotNull('receivable_schedule_id')
+            ->whereHas('category', fn ($q) => $q->where('system_key', 'receivable_principal'))
+            ->get(['receivable_schedule_id', 'amount', 'date']);
+
+        $history = [];
+        $start = CarbonImmutable::now()->startOfMonth()->subMonths($months - 1);
+        for ($i = 0; $i < $months; $i++) {
+            $m = $start->addMonths($i);
+            $asOf = ($i === $months - 1 ? CarbonImmutable::today() : $m->endOfMonth())->toDateString();
+            $p = $this->position($asOf);
+
+            $assetValue = (int) $assets->sum(fn ($a) => $a->valuations->first(fn ($v) => $v->date->toDateString() <= $asOf)?->value ?? 0);
+            $receivable = (int) $receivables->sum(function ($r) use ($principalTx, $asOf) {
+                $ids = $r->schedules->pluck('id');
+
+                return max(0, $r->principal - (int) $principalTx->whereIn('receivable_schedule_id', $ids)->filter(fn ($t) => $t->date->toDateString() <= $asOf)->sum('amount'));
+            });
+            $debt = (int) $debts->sum(fn ($d) => $d->hasSchedule()
+                ? $d->installments->filter(fn ($x) => ! $x->paid_at || $x->paid_at->toDateString() > $asOf)->sum('amount')
+                : $d->remaining_amount);
+
+            $total = $p['liquid'] - $p['held'] + $p['investment'] + $assetValue + $receivable;
+            $history[] = [
+                'month' => $m->format('Y-m'),
+                'label' => $m->locale(app()->getLocale())->translatedFormat('M y'),
+                'assets' => $total,
+                'debt' => $debt,
+                'net_worth' => $total - $debt,
+            ];
+        }
+
+        return $history;
+    }
+
+    /**
+     * Target keuangan. Target yang ditautkan ke rekening/Dompet Tujuan atau aset memakai saldo/nilainya
+     * sebagai dana terkumpul, sehingga uang yang sama tidak dicatat dua kali.
+     */
+    public function goals(): Collection
+    {
+        $goals = $this->user->goals()->with(['account:id,name', 'asset'])->orderBy('priority')->orderBy('target_date')->get();
+        $balances = $goals->contains(fn (Goal $g) => $g->account_id) ? $this->accounts()->pluck('balance', 'id') : collect();
+
+        return $goals->map(function (Goal $g) use ($balances) {
+            $g->linked = null;
+            if ($g->account) {
+                $g->current_amount = max(0, (int) ($balances[$g->account_id] ?? 0));
+                $g->linked = ['type' => 'account', 'name' => $g->account->name];
+            } elseif ($g->asset) {
+                $g->current_amount = $g->asset->currentValue();
+                $g->linked = ['type' => 'asset', 'name' => $g->asset->name];
+            }
+            $g->unsetRelation('asset');
+
+            return $g;
+        });
     }
 
     /**
@@ -251,7 +329,7 @@ class FinanceService
             'hint' => __('Total cicilan sebaiknya maksimal 30% dari pemasukan.'),
         ];
 
-        $investRatio = $position['total_assets'] > 0 ? $position['investment'] / $position['total_assets'] * 100 : null;
+        $investRatio = $position['total_assets'] > 0 ? $position['invested'] / $position['total_assets'] * 100 : null;
         $checks[] = [
             'key' => 'investment_ratio',
             'label' => __('Porsi investasi'),

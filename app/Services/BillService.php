@@ -107,8 +107,11 @@ class BillService
             ->selectRaw('recurring_item_id, SUM(amount) as total')->groupBy('recurring_item_id')->pluck('total', 'recurring_item_id');
         $byCategory = $monthTx()->whereIn('category_id', $incomes->pluck('category_id')->filter())
             ->selectRaw('category_id, SUM(amount) as total')->groupBy('category_id')->pluck('total', 'category_id');
+        // Tebakan per kategori hanya bila kategori itu dipakai satu item pemasukan saja; kalau dua item
+        // (mis. dua sumber Usaha) berbagi kategori, total yang sama akan terhitung untuk keduanya
+        $sharedCategory = $incomes->pluck('category_id')->filter()->countBy();
         $received = $incomes->mapWithKeys(fn (RecurringItem $i) => [
-            $i->id => (int) ($linked[$i->id] ?? ($i->category_id ? ($byCategory[$i->category_id] ?? 0) : 0)),
+            $i->id => (int) ($linked[$i->id] ?? ($i->category_id && $sharedCategory[$i->category_id] === 1 ? ($byCategory[$i->category_id] ?? 0) : 0)),
         ]);
 
         $events = $events->concat($incomes->map(fn (RecurringItem $i) => [

@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    // Backup ke Google Drive: buat OAuth Client (Web) di console.cloud.google.com, redirect = APP_URL/settings/backup/google/callback
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+    ],
+
 ];

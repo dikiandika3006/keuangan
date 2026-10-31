@@ -2,14 +2,19 @@
 
 namespace App\Services;
 
+use App\Models\Debt;
+use App\Models\Receivable;
 use App\Models\Scenario;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Proyeksi arus kas bulanan per skenario (PRJ-02, BR-11 s/d BR-17).
  * Bulan yang sudah lewat memakai angka aktual dari transaksi, bulan depan memakai asumsi.
+ * Cicilan & dana di teman diambil dari menu Utang/Piutang bila datanya ada, supaya tidak dicatat dua kali;
+ * asumsi skenario untuk hal itu hanya dipakai bila menu tersebut masih kosong.
  */
 class ProjectionService
 {
@@ -86,6 +91,10 @@ class ProjectionService
         $pocketTransfers = $this->pocketTransfers($thisMonth);
 
         $principal = (int) $a['friend_principal'];
+        $sources = $this->sources();
+        $debts = $this->user->debts()->with('installments')->get();
+        $receivables = $this->user->receivables()->get();
+        $friend = $sources['friend'] ? $this->receivableFlows($receivables, $start, $scenario->months) : null;
         $balance = $liquidNow;
         $rows = [];
         // Pemasukan/pengeluaran tetap berlaku untuk semua skenario
@@ -97,10 +106,14 @@ class ProjectionService
 
             $salary = $this->salaryFor($key, $a);
             $carActive = $this->onOrBefore($key, $a['car_last_month']);
-            $interest = (int) round($principal * (float) $a['friend_interest_pct'] / 100);
-            $withdraw = min($principal, (int) ($carActive ? $a['friend_withdraw_during_car'] : $a['friend_withdraw_after_car']));
-            $principalStart = $principal;
-            $principal -= $withdraw;
+            if ($friend) {
+                ['principal' => $principalStart, 'interest' => $interest, 'withdraw' => $withdraw] = $friend[$key];
+            } else {
+                $interest = (int) round($principal * (float) $a['friend_interest_pct'] / 100);
+                $withdraw = min($principal, (int) ($carActive ? $a['friend_withdraw_during_car'] : $a['friend_withdraw_after_car']));
+                $principalStart = $principal;
+                $principal -= $withdraw;
+            }
 
             $line = [
                 'salary' => $salary,
@@ -109,8 +122,10 @@ class ProjectionService
                 'withdraw' => $withdraw,
                 'jht' => $salary === 0 && $a['jht_month'] === $key ? (int) $a['jht_amount'] : 0,
                 'djitu' => (int) $a['djitu_income'],
-                'car' => $carActive ? (int) $a['car_installment'] : 0,
-                'house' => $this->onOrBefore($key, $a['house_last_month']) ? (int) $a['house_installment'] : 0,
+                'car' => $sources['car'] ? $this->debtDue($debts->where('kind', 'car'), $m, $thisMonth) : ($carActive ? (int) $a['car_installment'] : 0),
+                'house' => $sources['house'] ? $this->debtDue($debts->where('kind', 'house'), $m, $thisMonth) : ($this->onOrBefore($key, $a['house_last_month']) ? (int) $a['house_installment'] : 0),
+                // Utang lain dari menu Utang (kartu kredit, paylater, pinjaman pribadi, dll.)
+                'debt' => $this->debtDue($debts->whereNotIn('kind', ['car', 'house']), $m, $thisMonth),
                 'school' => $this->onOrAfter($key, $a['school_start_month']) ? (int) $a['school_fee'] : 0,
                 'groceries' => (int) $a['groceries'],
                 'pelagic' => $salary > 0 ? (int) $a['pelagic_deposit'] : 0,
@@ -122,7 +137,7 @@ class ProjectionService
             $line['pocket'] = (int) $active->where('type', 'transfer')->sum('amount');
 
             $in = $line['salary'] + $line['plastic'] + $line['interest'] + $line['withdraw'] + $line['jht'] + $line['djitu'] + $line['recurring_in'];
-            $out = $line['car'] + $line['house'] + $line['school'] + $line['groceries'] + $line['pelagic'] + $line['other'] + $line['recurring_out'] + $line['pocket'];
+            $out = $line['car'] + $line['house'] + $line['debt'] + $line['school'] + $line['groceries'] + $line['pelagic'] + $line['other'] + $line['recurring_out'] + $line['pocket'];
 
             $actual = null;
             if ($m->lt($thisMonth)) {
@@ -155,10 +170,12 @@ class ProjectionService
             ];
         }
 
-        return ['rows' => $rows, 'summary' => $this->summary($rows, $a, $liquidNow)];
+        $principalNow = $friend ? (int) $receivables->sum(fn (Receivable $r) => $r->remainingPrincipal()) : (int) $a['friend_principal'];
+
+        return ['rows' => $rows, 'summary' => $this->summary($rows, $a, $liquidNow, $principalNow), 'sources' => $sources];
     }
 
-    private function summary(array $rows, array $a, int $liquidNow): array
+    private function summary(array $rows, array $a, int $liquidNow, int $principalNow): array
     {
         $future = array_values(array_filter($rows, fn ($r) => ! $r['is_past']));
         $min = collect($future)->sortBy('balance')->first();
@@ -181,9 +198,86 @@ class ProjectionService
             'monthly_burn' => $burn,
             'runway_months' => $burn > 0 ? round($liquidNow / $burn, 1) : null,
             'car_paid_off' => $carLast ? $carLast['label'] : null,
-            'principal_after_car' => $carLast ? $carLast['principal_start'] - $carLast['withdraw'] : (int) $a['friend_principal'],
+            'principal_after_car' => $carLast ? $carLast['principal_start'] - $carLast['withdraw'] : $principalNow,
             'emergency_target' => (int) $a['emergency_target'],
         ];
+    }
+
+    /**
+     * Bagian skenario yang digantikan data menu: cicilan mobil/rumah dari Utang, dana di teman dari Piutang.
+     *
+     * @return array{car: bool, house: bool, friend: bool}
+     */
+    public function sources(): array
+    {
+        $kinds = $this->user->debts()->pluck('kind');
+
+        return [
+            'car' => $kinds->contains('car'),
+            'house' => $kinds->contains('house'),
+            'friend' => $this->user->receivables()->exists(),
+        ];
+    }
+
+    /**
+     * Cicilan utang yang jatuh di bulan $m: utang berjadwal memakai jadwal cicilannya,
+     * utang tanpa jadwal dibayar cicilan per bulan mulai bulan ini sampai sisa utang habis.
+     */
+    private function debtDue(Collection $debts, CarbonImmutable $m, CarbonImmutable $thisMonth): int
+    {
+        return (int) $debts->sum(function (Debt $d) use ($m, $thisMonth) {
+            if ($d->hasSchedule()) {
+                return (int) $d->installments->first(fn ($i) => $i->period->isSameMonth($m))?->amount;
+            }
+            if ($d->monthly_payment <= 0 || $d->remaining_amount <= 0) {
+                return 0;
+            }
+            if ($m->lt($thisMonth)) {
+                return $d->monthly_payment;
+            }
+
+            return max(0, min($d->monthly_payment, $d->remaining_amount - (int) $thisMonth->diffInMonths($m) * $d->monthly_payment));
+        });
+    }
+
+    /**
+     * Bunga & tarikan pokok dari semua piutang per bulan proyeksi. Jadwal yang sudah ada (sampai bulan depan)
+     * dipakai apa adanya; bulan setelahnya dihitung dengan aturan yang sama seperti jadwal piutang.
+     *
+     * @return array<string, array{principal: int, interest: int, withdraw: int}>
+     */
+    private function receivableFlows(Collection $receivables, CarbonImmutable $start, int $months): array
+    {
+        $end = $start->addMonths($months - 1);
+        $thisMonth = CarbonImmutable::now()->startOfMonth();
+        $flows = [];
+        for ($i = 0; $i < $months; $i++) {
+            $flows[$start->addMonths($i)->format('Y-m')] = ['principal' => 0, 'interest' => 0, 'withdraw' => 0];
+        }
+
+        foreach ($receivables as $r) {
+            $r->syncSchedule();
+            $schedules = $r->schedules()->get()->keyBy(fn ($s) => $s->period->format('Y-m'));
+            $remaining = $r->principal;
+
+            for ($period = CarbonImmutable::parse($r->start_month)->startOfMonth(); $period->lte($end); $period = $period->addMonth()) {
+                $key = $period->format('Y-m');
+                $schedule = $schedules[$key] ?? null;
+                $interest = $schedule ? $schedule->interest_due : (int) round($remaining * $r->interest_pct / 100);
+                $due = $schedule ? $schedule->principal_due : min($remaining, $r->withdrawalFor($period));
+
+                if (isset($flows[$key])) {
+                    $flows[$key]['principal'] += $remaining;
+                    $flows[$key]['interest'] += $interest;
+                    $flows[$key]['withdraw'] += $due;
+                }
+
+                $received = $schedule && $period->lte($thisMonth) ? $schedule->received()['principal'] : 0;
+                $remaining = max(0, $remaining - ($period->lt($thisMonth) ? $received : max($received, $due)));
+            }
+        }
+
+        return $flows;
     }
 
     private function salaryFor(string $month, array $a): int

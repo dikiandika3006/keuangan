@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Goal extends Model
 {
-    protected $fillable = ['name', 'target_amount', 'current_amount', 'target_date', 'priority', 'color'];
+    use LogsActivity;
+
+    protected $fillable = ['name', 'target_amount', 'current_amount', 'account_id', 'asset_id', 'target_date', 'priority', 'color'];
 
     protected function casts(): array
     {
@@ -17,5 +20,15 @@ class Goal extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
+    }
+
+    public function asset(): BelongsTo
+    {
+        return $this->belongsTo(Asset::class);
     }
 }

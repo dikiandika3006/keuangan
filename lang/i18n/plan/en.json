@@ -51,5 +51,11 @@
     "Pengeluaran Rutin": "Regular Expense",
     "Nominal per bulan. Tanggal mulai/selesai opsional (mis. kontrak kerja, masa cicilan).": "Amount per month. Start/end dates are optional (e.g. job contract, loan period).",
     "Nominal per bulan": "Amount per month",
-    "Selesai": "End"
+    "Selesai": "End",
+    "Mengikuti saldo :name": "Follows the balance of :name",
+    "Dana disimpan di": "Money kept in",
+    "Tidak ditautkan (isi manual)": "Not linked (enter manually)",
+    "Dompet / Rekening": "Pocket / Account",
+    "Aset": "Assets",
+    "Bila ditautkan, dana terkumpul otomatis mengikuti saldonya, jadi tidak perlu dicatat dua kali.": "When linked, the amount saved follows its balance automatically, so you don't record it twice."
 }

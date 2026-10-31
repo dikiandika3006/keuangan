@@ -3,7 +3,7 @@ import { ColorPicker, DeleteButton, EmptyState, Field, FormDialog, Page, PageHea
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { COLORS, compact, formatDate, monthlyNeeded, monthsUntil, percent, PRIORITIES, rupiah } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -16,12 +16,30 @@ import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: t('Target'), href: '/goals' }];
 
-type FormData = { name: string; target_amount: number | ''; current_amount: number | ''; target_date: string; priority: number; color: string };
+type FormData = {
+    name: string;
+    target_amount: number | '';
+    current_amount: number | '';
+    /** '' = isi manual, 'account:ID' atau 'asset:ID' = ikuti saldo */
+    link: string;
+    target_date: string;
+    priority: number;
+    color: string;
+};
 
-export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthlySurplus: number }) {
+interface Props {
+    goals: Goal[];
+    monthlySurplus: number;
+    accounts: { id: number; name: string; type: string }[];
+    assets: { id: number; name: string }[];
+}
+
+const linkOf = (g: Goal) => (g.account_id ? `account:${g.account_id}` : g.asset_id ? `asset:${g.asset_id}` : '');
+
+export default function Goals({ goals, monthlySurplus, accounts, assets }: Props) {
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Goal | null>(null);
-    const form = useForm<FormData>({ name: '', target_amount: '', current_amount: '', target_date: '', priority: 2, color: COLORS[1] });
+    const form = useForm<FormData>({ name: '', target_amount: '', current_amount: '', link: '', target_date: '', priority: 2, color: COLORS[1] });
 
     const [depositFor, setDepositFor] = useState<Goal | null>(null);
     const [depositMode, setDepositMode] = useState<'in' | 'out'>('in');
@@ -36,6 +54,7 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
                       name: g.name,
                       target_amount: g.target_amount,
                       current_amount: g.current_amount,
+                      link: linkOf(g),
                       target_date: g.target_date ?? '',
                       priority: g.priority,
                       color: g.color,
@@ -44,6 +63,7 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
                       name: '',
                       target_amount: '',
                       current_amount: '',
+                      link: '',
                       target_date: '',
                       priority: 2,
                       color: COLORS[(goals.length + 1) % COLORS.length],
@@ -53,7 +73,16 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
     };
 
     const submit = () => {
-        form.transform((d) => ({ ...d, current_amount: d.current_amount || 0, target_date: d.target_date || null }));
+        form.transform(({ link, ...d }) => {
+            const [kind, id] = link.split(':');
+            return {
+                ...d,
+                current_amount: d.current_amount || 0,
+                account_id: kind === 'account' ? Number(id) : null,
+                asset_id: kind === 'asset' ? Number(id) : null,
+                target_date: d.target_date || null,
+            };
+        });
         const options = { preserveScroll: true, onSuccess: () => setOpen(false) };
         if (editing) form.put(route('goals.update', editing.id), options);
         else form.post(route('goals.store'), options);
@@ -172,17 +201,23 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
                                                   ? t('Sisihkan :amount/bln', { amount: rupiah(need) })
                                                   : t('Kurang :amount', { amount: rupiah(g.target_amount - g.current_amount) })}
                                         </div>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => {
-                                                setDepositFor(g);
-                                                setDepositMode('in');
-                                                setDepositValue('');
-                                            }}
-                                        >
-                                            {t('Update dana')}
-                                        </Button>
+                                        {g.linked ? (
+                                            <span className="text-muted-foreground truncate text-xs">
+                                                {t('Mengikuti saldo :name', { name: g.linked.name })}
+                                            </span>
+                                        ) : (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setDepositFor(g);
+                                                    setDepositMode('in');
+                                                    setDepositValue('');
+                                                }}
+                                            >
+                                                {t('Update dana')}
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -210,9 +245,11 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
                     <Field label={t('Jumlah target')} error={form.errors.target_amount}>
                         <MoneyInput value={form.data.target_amount} onChange={(v) => form.setData('target_amount', v)} />
                     </Field>
-                    <Field label={t('Sudah terkumpul')} error={form.errors.current_amount}>
-                        <MoneyInput value={form.data.current_amount} onChange={(v) => form.setData('current_amount', v)} />
-                    </Field>
+                    {form.data.link === '' && (
+                        <Field label={t('Sudah terkumpul')} error={form.errors.current_amount}>
+                            <MoneyInput value={form.data.current_amount} onChange={(v) => form.setData('current_amount', v)} />
+                        </Field>
+                    )}
                     <Field label={t('Tanggal target')} error={form.errors.target_date} htmlFor="goal-date">
                         <Input
                             id="goal-date"
@@ -236,6 +273,42 @@ export default function Goals({ goals, monthlySurplus }: { goals: Goal[]; monthl
                         </Select>
                     </Field>
                 </div>
+                <Field
+                    label={t('Dana disimpan di')}
+                    error={(form.errors as Record<string, string>).account_id ?? (form.errors as Record<string, string>).asset_id}
+                >
+                    <Select value={form.data.link || 'none'} onValueChange={(v) => form.setData('link', v === 'none' ? '' : v)}>
+                        <SelectTrigger>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="none">{t('Tidak ditautkan (isi manual)')}</SelectItem>
+                            {accounts.length > 0 && (
+                                <SelectGroup>
+                                    <SelectLabel>{t('Dompet / Rekening')}</SelectLabel>
+                                    {accounts.map((a) => (
+                                        <SelectItem key={a.id} value={`account:${a.id}`}>
+                                            {a.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectGroup>
+                            )}
+                            {assets.length > 0 && (
+                                <SelectGroup>
+                                    <SelectLabel>{t('Aset')}</SelectLabel>
+                                    {assets.map((a) => (
+                                        <SelectItem key={a.id} value={`asset:${a.id}`}>
+                                            {a.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectGroup>
+                            )}
+                        </SelectContent>
+                    </Select>
+                    <p className="text-muted-foreground text-xs">
+                        {t('Bila ditautkan, dana terkumpul otomatis mengikuti saldonya, jadi tidak perlu dicatat dua kali.')}
+                    </p>
+                </Field>
                 <Field label={t('Warna')}>
                     <ColorPicker value={form.data.color} onChange={(c) => form.setData('color', c)} colors={COLORS} />
                 </Field>
