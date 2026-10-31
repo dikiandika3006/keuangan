@@ -187,6 +187,8 @@ const MOVE_LABELS = {
     asset_withdrawal: t('Pencairan aset'),
     receivable_principal: t('Pokok piutang kembali'),
     debt_principal: t('Pelunasan pokok utang'),
+    receivable_out: t('Dana ke piutang'),
+    receivable_topup: t('Tambah pokok piutang'),
 };
 
 export default function Recap({ month, groups, moves, transactions, trend }: Props) {

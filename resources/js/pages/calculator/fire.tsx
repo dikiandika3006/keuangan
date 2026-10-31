@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { fire, type FireInput } from '@/lib/calculators';
 import { compact, monthLabel, rupiah } from '@/lib/format';
+import { jsonFetch } from '@/lib/http';
 import { intlLocale, t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
-import { Head, useForm } from '@inertiajs/react';
-import { Flag, Pencil, PiggyBank, Plus, RotateCcw, Target, Trash2, TrendingUp, Wallet } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { Cloud, Flag, Pencil, PiggyBank, Plus, RotateCcw, Target, Trash2, TrendingUp, Wallet } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: t('Kalkulator FIRE'), href: '/calculator/fire' }];
@@ -24,6 +25,14 @@ const TAB_KEY = 'keuangan.calculator.fire.tab';
 type Tab = 'simulation' | 'actual';
 
 /** Realisasi dana FIRE satu bulan, diisi manual (terpisah dari rekening & transaksi). */
+/** Rekening yang ditandai Rekening FIRE: sumber otomatis tab Realisasi. */
+interface FireAccount {
+    id: number;
+    name: string;
+    /** Saldo sebelum bulan pertama riwayat */
+    opening: number;
+}
+
 interface FireEntry {
     id: number;
     month: string;
@@ -55,7 +64,39 @@ function duration(months: number): string {
     return [y && t(':n tahun', { n: y }), m && t(':n bulan', { n: m })].filter(Boolean).join(' ') || t('Sekarang');
 }
 
-export default function FireCalculator({ entries }: { entries: FireEntry[] }) {
+type Settings = Record<Tab, FireInput>;
+
+/** Angka harus tersimpan sebagai angka (kolom uang yang dikosongkan = 0). */
+const clean = (v: FireInput): FireInput => ({
+    initial: Number(v.initial) || 0,
+    monthlySaving: Number(v.monthlySaving) || 0,
+    monthlyExpense: Number(v.monthlyExpense) || 0,
+    rate: Number(v.rate) || 0,
+    tax: Number(v.tax) || 0,
+    withdrawalRate: Number(v.withdrawalRate) || 0,
+});
+
+/** Angka lama yang dulu tersimpan di browser perangkat ini (sebelum disimpan di akun). */
+function legacySettings(): Settings | null {
+    try {
+        const sim = localStorage.getItem(STORAGE_KEY);
+        const act = localStorage.getItem(STORAGE_KEY_ACTUAL);
+        if (!sim && !act) return null;
+        return { simulation: { ...DEFAULTS, ...JSON.parse(sim ?? '{}') }, actual: { ...DEFAULTS, ...JSON.parse(act ?? '{}') } };
+    } catch {
+        return null;
+    }
+}
+
+export default function FireCalculator({
+    entries,
+    settings,
+    fireAccount,
+}: {
+    entries: FireEntry[];
+    settings: Settings | null;
+    fireAccount: FireAccount | null;
+}) {
     const [tab, setTab] = useState<Tab>(() => {
         try {
             return localStorage.getItem(TAB_KEY) === 'actual' ? 'actual' : 'simulation';
@@ -63,27 +104,38 @@ export default function FireCalculator({ entries }: { entries: FireEntry[] }) {
             return 'simulation';
         }
     });
-    // Simulasi dan Realisasi punya variabel sendiri-sendiri, tidak saling memengaruhi
-    const [inputs, setInputs] = useState<Record<Tab, FireInput>>(() => {
-        const load = (key: string) => {
-            try {
-                return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(key) ?? '{}') };
-            } catch {
-                return DEFAULTS;
-            }
-        };
-        return { simulation: load(STORAGE_KEY), actual: load(STORAGE_KEY_ACTUAL) };
+    // Simulasi dan Realisasi punya variabel sendiri-sendiri, disimpan di akun supaya sama di semua perangkat.
+    // Akun belum punya → pakai angka lama di browser ini (sekali dipindahkan ke akun), lalu bawaan.
+    const [inputs, setInputs] = useState<Settings>(() => {
+        const base = settings ?? legacySettings();
+        return { simulation: { ...DEFAULTS, ...base?.simulation }, actual: { ...DEFAULTS, ...base?.actual } };
     });
+    const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const firstRender = useRef(settings !== null);
     const a = inputs[tab];
     const setA = (v: FireInput) => setInputs((prev) => ({ ...prev, [tab]: v }));
 
     useEffect(() => {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs.simulation));
-            localStorage.setItem(STORAGE_KEY_ACTUAL, JSON.stringify(inputs.actual));
-        } catch {
-            /* abaikan */
+        // Nilai dari akun tidak perlu disimpan ulang saat halaman dibuka
+        if (firstRender.current) {
+            firstRender.current = false;
+            return;
         }
+        setSaveState('saving');
+        const timer = setTimeout(() => {
+            jsonFetch(route('fire.settings'), { method: 'PUT', body: { simulation: clean(inputs.simulation), actual: clean(inputs.actual) } })
+                .then(() => {
+                    setSaveState('saved');
+                    try {
+                        localStorage.removeItem(STORAGE_KEY);
+                        localStorage.removeItem(STORAGE_KEY_ACTUAL);
+                    } catch {
+                        /* abaikan */
+                    }
+                })
+                .catch(() => setSaveState('error'));
+        }, 700);
+        return () => clearTimeout(timer);
     }, [inputs]);
 
     useEffect(() => {
@@ -135,9 +187,26 @@ export default function FireCalculator({ entries }: { entries: FireEntry[] }) {
                     <Section
                         title={tab === 'actual' ? t('Variabel Realisasi') : t('Variabel')}
                         action={
-                            <Button size="sm" variant="ghost" onClick={() => setA(DEFAULTS)}>
-                                <RotateCcw className="size-4" /> {t('Reset')}
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                {/* Status penyimpanan ke akun */}
+                                <span
+                                    className={cn(
+                                        'flex items-center gap-1 text-xs',
+                                        saveState === 'error' ? 'text-red-600' : 'text-muted-foreground',
+                                    )}
+                                >
+                                    {saveState === 'saving' && t('Menyimpan…')}
+                                    {saveState === 'saved' && (
+                                        <>
+                                            <Cloud className="size-3.5" /> {t('Tersimpan di akun')}
+                                        </>
+                                    )}
+                                    {saveState === 'error' && t('Gagal menyimpan')}
+                                </span>
+                                <Button size="sm" variant="ghost" onClick={() => setA(DEFAULTS)}>
+                                    <RotateCcw className="size-4" /> {t('Reset')}
+                                </Button>
+                            </div>
                         }
                     >
                         <div className="grid gap-4">
@@ -169,7 +238,7 @@ export default function FireCalculator({ entries }: { entries: FireEntry[] }) {
                     </Section>
 
                     {tab === 'actual' ? (
-                        <Actual entries={entries} input={a} target={r.target} />
+                        <Actual entries={entries} input={a} target={r.target} account={fireAccount} />
                     ) : (
                         <div className="grid min-w-0 gap-4 lg:col-span-2">
                             <div className="grid grid-cols-2 gap-3">
@@ -306,10 +375,10 @@ function addMonth(month: string, n: number): string {
 }
 
 /**
- * Realisasi dana FIRE per bulan dari isian manual, dibanding rencana simulasi (mulai dari dana awal).
- * Hasil invest = saldo − saldo bulan terisi sebelumnya − setoran bulan ini.
+ * Realisasi dana FIRE per bulan, dibanding rencana simulasi. Sumbernya Rekening FIRE (otomatis) bila ada,
+ * selain itu isian manual (mulai dari dana awal). Hasil invest = saldo − saldo bulan sebelumnya − setoran bulan ini.
  */
-function Actual({ entries, input, target }: { entries: FireEntry[]; input: FireInput; target: number }) {
+function Actual({ entries, input, target, account }: { entries: FireEntry[]; input: FireInput; target: number; account: FireAccount | null }) {
     const [open, setOpen] = useState(false);
     const form = useForm<{ month: string; deposit: number | ''; balance: number | '' }>({ month: '', deposit: '', balance: '' });
     const now = new Date();
@@ -351,7 +420,9 @@ function Actual({ entries, input, target }: { entries: FireEntry[]; input: FireI
                 <EmptyState
                     icon={Wallet}
                     title={t('Belum ada realisasi')}
-                    description={t('Isi setoran dan saldo dana FIRE kamu tiap bulan untuk melihat progres dibanding rencana.')}
+                    description={t(
+                        'Isi setoran dan saldo dana FIRE kamu tiap bulan, atau tandai satu rekening sebagai Rekening FIRE di halaman Rekening supaya terisi otomatis.',
+                    )}
                     action={
                         <Button onClick={() => openFor(thisMonth)}>
                             <Plus className="size-4" /> {t('Isi bulan ini')}
@@ -365,8 +436,8 @@ function Actual({ entries, input, target }: { entries: FireEntry[]; input: FireI
 
     const growth = (input.rate / 100 / 12) * (1 - input.tax / 100);
     const lastMonth = entries[entries.length - 1].month > thisMonth ? entries[entries.length - 1].month : thisMonth;
-    let plan = input.initial;
-    let prev = input.initial;
+    let plan = account ? account.opening : input.initial;
+    let prev = plan;
     const rows = [];
     for (let m = entries[0].month; m <= lastMonth; m = addMonth(m, 1)) {
         plan = (plan + input.monthlySaving) * (1 + growth);
@@ -392,7 +463,18 @@ function Actual({ entries, input, target }: { entries: FireEntry[]; input: FireI
     return (
         <>
             <div className="grid min-w-0 gap-4 lg:col-span-2">
-                {!byMonth.has(thisMonth) && (
+                {account && (
+                    <div className="bg-muted/50 rounded-xl border px-4 py-3 text-sm">
+                        {t('Otomatis dari rekening')} <b>{account.name}</b>.{' '}
+                        <span className="text-muted-foreground">
+                            {t('Setoran = transfer ke rekening ini. Perbarui nilainya lewat Cocokkan saldo supaya hasil invest tercatat.')}
+                        </span>{' '}
+                        <Link href={route('accounts.index')} className="font-medium underline underline-offset-2">
+                            {t('Buka Rekening')}
+                        </Link>
+                    </div>
+                )}
+                {!account && !byMonth.has(thisMonth) && (
                     <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
                         <span>
                             {t('Realisasi :month belum diisi.', { month: monthLabel(thisMonth, 'long') })}
@@ -449,9 +531,11 @@ function Actual({ entries, input, target }: { entries: FireEntry[]; input: FireI
                 title={t('Progres per Bulan')}
                 className="lg:col-span-3"
                 action={
-                    <Button size="sm" variant="outline" onClick={() => openFor(byMonth.has(thisMonth) ? addMonth(lastMonth, 1) : thisMonth)}>
-                        <Plus className="size-4" /> {t('Isi realisasi')}
-                    </Button>
+                    !account && (
+                        <Button size="sm" variant="outline" onClick={() => openFor(byMonth.has(thisMonth) ? addMonth(lastMonth, 1) : thisMonth)}>
+                            <Plus className="size-4" /> {t('Isi realisasi')}
+                        </Button>
+                    )
                 }
             >
                 {/* HP: kartu per bulan supaya tidak perlu geser ke kanan */}
@@ -463,23 +547,27 @@ function Actual({ entries, input, target }: { entries: FireEntry[]; input: FireI
                                 {m.entry ? (
                                     <span className="flex items-center">
                                         <span className="mr-1 font-semibold">{rupiah(m.entry.balance)}</span>
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="size-8"
-                                            onClick={() => openFor(m.month)}
-                                            aria-label={t('Ubah')}
-                                        >
-                                            <Pencil className="size-4" />
-                                        </Button>
-                                        <DeleteButton
-                                            url={route('fire-entries.destroy', m.entry.id)}
-                                            label={t('realisasi :month', { month: m.label })}
-                                        >
-                                            <Button size="icon" variant="ghost" className="size-8" aria-label={t('Hapus')}>
-                                                <Trash2 className="size-4" />
-                                            </Button>
-                                        </DeleteButton>
+                                        {!account && (
+                                            <>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="size-8"
+                                                    onClick={() => openFor(m.month)}
+                                                    aria-label={t('Ubah')}
+                                                >
+                                                    <Pencil className="size-4" />
+                                                </Button>
+                                                <DeleteButton
+                                                    url={route('fire-entries.destroy', m.entry.id)}
+                                                    label={t('realisasi :month', { month: m.label })}
+                                                >
+                                                    <Button size="icon" variant="ghost" className="size-8" aria-label={t('Hapus')}>
+                                                        <Trash2 className="size-4" />
+                                                    </Button>
+                                                </DeleteButton>
+                                            </>
+                                        )}
                                     </span>
                                 ) : (
                                     <Button size="sm" variant="outline" onClick={() => openFor(m.month)}>
@@ -547,17 +635,21 @@ function Actual({ entries, input, target }: { entries: FireEntry[]; input: FireI
                                             {target > 0 ? percent(Math.min(100, (m.entry.balance / target) * 100), 1) : '-'}
                                         </td>
                                         <td className="px-4 py-1 whitespace-nowrap">
-                                            <Button size="icon" variant="ghost" className="size-8" onClick={() => openFor(m.month)}>
-                                                <Pencil className="size-4" />
-                                            </Button>
-                                            <DeleteButton
-                                                url={route('fire-entries.destroy', m.entry.id)}
-                                                label={t('realisasi :month', { month: m.label })}
-                                            >
-                                                <Button size="icon" variant="ghost" className="size-8">
-                                                    <Trash2 className="size-4" />
-                                                </Button>
-                                            </DeleteButton>
+                                            {!account && (
+                                                <>
+                                                    <Button size="icon" variant="ghost" className="size-8" onClick={() => openFor(m.month)}>
+                                                        <Pencil className="size-4" />
+                                                    </Button>
+                                                    <DeleteButton
+                                                        url={route('fire-entries.destroy', m.entry.id)}
+                                                        label={t('realisasi :month', { month: m.label })}
+                                                    >
+                                                        <Button size="icon" variant="ghost" className="size-8">
+                                                            <Trash2 className="size-4" />
+                                                        </Button>
+                                                    </DeleteButton>
+                                                </>
+                                            )}
                                         </td>
                                     </tr>
                                 ) : (

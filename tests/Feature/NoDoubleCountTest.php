@@ -237,6 +237,39 @@ class NoDoubleCountTest extends TestCase
             ->assertSessionHasErrors('date');
     }
 
+    public function test_receivable_funded_from_account_and_topped_up_is_not_an_expense()
+    {
+        [$user, $account] = $this->userWithAccount(100_000_000);
+
+        // Dana awal 50 jt diambil dari BCA, bunga 1%/bln, tanpa tarikan
+        $this->post('/receivables', [
+            'counterparty' => 'Teman', 'principal' => 50_000_000, 'interest_pct' => 1, 'withdrawal' => 0, 'due_day' => 1,
+            'start_month' => '2026-09', 'account_id' => $account->id, 'funded_date' => '2026-09-01',
+        ])->assertSessionHasNoErrors();
+        $receivable = $user->receivables()->sole();
+        $this->assertSame(50_000_000, (new FinanceService($user))->accounts()->first()->balance);
+
+        // Tambah pokok 10 jt di Oktober → bunga November dihitung dari 60 jt
+        $this->post("/receivables/{$receivable->id}/topup", ['account_id' => $account->id, 'amount' => 10_000_000, 'date' => '2026-10-10'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(60_000_000, $receivable->remainingPrincipal());
+        $this->assertSame(500_000, $receivable->schedules()->where('period', '2026-10-01')->sole()->interest_due);
+        $this->assertSame(600_000, $receivable->schedules()->where('period', '2026-11-01')->sole()->interest_due);
+
+        $finance = new FinanceService($user);
+        $this->assertSame(40_000_000, $finance->accounts()->first()->balance);
+        // Kekayaan bersih tetap 100 jt: uang hanya pindah dari rekening ke piutang
+        $this->assertSame(100_000_000, $finance->position()['net_worth']);
+
+        $this->get('/recap?month=2026-10')->assertInertia(fn ($p) => $p
+            ->where('groups.expense', [])
+            ->where('moves.receivable_topup', 10_000_000));
+        $this->get('/receivables')->assertInertia(fn ($p) => $p
+            ->where('receivables.0.topped_up', 10_000_000)
+            ->where('receivables.0.history.0.kind', 'topup')
+            ->where('receivables.0.history.1.kind', 'out'));
+    }
+
     public function test_calendar_does_not_count_one_income_for_two_items_sharing_a_category()
     {
         [$user, $account] = $this->userWithAccount();

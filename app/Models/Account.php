@@ -11,13 +11,14 @@ class Account extends Model
 {
     use LogsActivity;
 
-    protected $fillable = ['name', 'type', 'initial_balance', 'color', 'is_emergency_fund', 'is_archived', 'last_reconciled_at', 'last_reconciled_balance'];
+    protected $fillable = ['name', 'type', 'initial_balance', 'color', 'is_emergency_fund', 'is_fire', 'is_archived', 'last_reconciled_at', 'last_reconciled_balance'];
 
     protected function casts(): array
     {
         return [
             'initial_balance' => 'integer',
             'is_emergency_fund' => 'boolean',
+            'is_fire' => 'boolean',
             'is_archived' => 'boolean',
             'last_reconciled_at' => 'date:Y-m-d',
             'last_reconciled_balance' => 'integer',

@@ -1,16 +1,17 @@
-import { AccountSelect, useDefaultAccountId } from '@/components/finance/account-select';
+import { AccountOptions, AccountSelect, useDefaultAccountId } from '@/components/finance/account-select';
 import { MoneyInput } from '@/components/finance/money-input';
 import { MonthPicker } from '@/components/finance/month-picker';
 import { DeleteButton, EmptyState, Field, FormDialog, Page, PageHeader, ProgressBar, StatCard, StatusBadge } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { compact, formatDate, monthLabel, percent, rupiah, today } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { type Receivable, type ReceivableSchedule } from '@/types/finance';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import { ExternalLink, HandCoins, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -27,6 +28,9 @@ type FormData = {
     start_month: string;
     agreement_url: string;
     note: string;
+    /** Hanya saat membuat: rekening sumber dana (kosong = tidak memotong rekening) */
+    account_id: string;
+    funded_date: string;
 };
 
 const empty: FormData = {
@@ -40,6 +44,8 @@ const empty: FormData = {
     start_month: today().slice(0, 7),
     agreement_url: '',
     note: '',
+    account_id: '',
+    funded_date: today(),
 };
 
 type ReceiveMode = 'principal' | 'auto';
@@ -55,6 +61,14 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
     const [receiveFor, setReceiveFor] = useState<{ r: Receivable; s: ReceivableSchedule | null } | null>(null);
     const defaultAccount = useDefaultAccountId();
     const receive = useForm<ReceiveData>({ schedule_id: '', mode: 'auto', account_id: '', amount: '', date: today() });
+    const { finance } = usePage<SharedData & { finance: { accounts: { id: number; name: string; type: string }[] } | null }>().props;
+    const [topupFor, setTopupFor] = useState<Receivable | null>(null);
+    const topup = useForm<{ account_id: string; amount: number | ''; date: string }>({ account_id: '', amount: '', date: today() });
+    const openTopup = (r: Receivable) => {
+        topup.clearErrors();
+        topup.setData({ account_id: defaultAccount, amount: '', date: today() });
+        setTopupFor(r);
+    };
 
     const openForm = (r: Receivable | null) => {
         setEditing(r);
@@ -72,6 +86,8 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                       start_month: r.start_month.slice(0, 7),
                       agreement_url: r.agreement_url ?? '',
                       note: r.note ?? '',
+                      account_id: '',
+                      funded_date: today(),
                   }
                 : empty,
         );
@@ -95,6 +111,8 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
             withdrawal: d.withdrawal || 0,
             withdrawal_change_month: d.withdrawal_change_month || null,
             withdrawal_after: d.withdrawal_after === '' ? null : d.withdrawal_after,
+            account_id: d.account_id || null,
+            funded_date: d.account_id ? d.funded_date : null,
         }));
         const options = { preserveScroll: true, onSuccess: () => setOpen(false) };
         if (editing) form.put(route('receivables.update', editing.id), options);
@@ -186,13 +204,22 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                                         <div className="text-lg font-bold tabular-nums">{rupiah(r.remaining)}</div>
                                     </div>
                                     <div className="text-muted-foreground text-right text-xs">
-                                        {t('dari :amount', { amount: rupiah(r.principal) })}
+                                        {t('dari :amount', { amount: rupiah(r.principal + r.topped_up) })}
                                     </div>
                                 </div>
-                                <ProgressBar className="mt-2" value={percent(r.principal - r.remaining, r.principal)} color="#6366f1" />
-                                <Button size="sm" className="mt-3 w-full sm:w-auto" onClick={() => openReceive(r, null)} disabled={r.remaining <= 0}>
-                                    <HandCoins /> {t('Tarik / Terima')}
-                                </Button>
+                                <ProgressBar
+                                    className="mt-2"
+                                    value={percent(r.principal + r.topped_up - r.remaining, r.principal + r.topped_up)}
+                                    color="#6366f1"
+                                />
+                                <div className="mt-3 grid grid-cols-2 gap-2 sm:flex">
+                                    <Button size="sm" onClick={() => openReceive(r, null)} disabled={r.remaining <= 0}>
+                                        <HandCoins /> {t('Tarik / Terima')}
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => openTopup(r)}>
+                                        <Plus /> {t('Tambah pokok')}
+                                    </Button>
+                                </div>
 
                                 <div className="mt-3 overflow-x-auto">
                                     <table className="w-full min-w-[480px] text-sm">
@@ -235,16 +262,35 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                                 </div>
                                 {r.history.length > 0 && (
                                     <div className="mt-3 border-t pt-2">
-                                        <div className="text-muted-foreground mb-1 text-xs font-medium">{t('Uang masuk terakhir')}</div>
+                                        <div className="text-muted-foreground mb-1 text-xs font-medium">{t('Riwayat dana')}</div>
                                         <ul className="divide-y text-sm">
                                             {r.history.map((h) => (
                                                 <li key={h.id} className="flex items-center justify-between gap-2 py-1.5">
                                                     <span className="min-w-0 truncate">
                                                         {formatDate(h.date, { day: 'numeric', month: 'short', year: 'numeric' })} ·{' '}
-                                                        {h.kind === 'interest' ? t('Bunga') : t('Tarik pokok')}
-                                                        {h.account && <span className="text-muted-foreground"> → {h.account}</span>}
+                                                        {h.kind === 'interest'
+                                                            ? t('Bunga')
+                                                            : h.kind === 'out'
+                                                              ? t('Dana diberikan')
+                                                              : h.kind === 'topup'
+                                                                ? t('Tambah pokok')
+                                                                : t('Tarik pokok')}
+                                                        {h.account && (
+                                                            <span className="text-muted-foreground">
+                                                                {h.kind === 'out' || h.kind === 'topup' ? ' ← ' : ' → '}
+                                                                {h.account}
+                                                            </span>
+                                                        )}
                                                     </span>
-                                                    <span className="shrink-0 font-medium text-emerald-600 tabular-nums">+{rupiah(h.amount)}</span>
+                                                    {h.kind === 'out' || h.kind === 'topup' ? (
+                                                        <span className="shrink-0 font-medium text-indigo-600 tabular-nums dark:text-indigo-400">
+                                                            −{rupiah(h.amount)}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="shrink-0 font-medium text-emerald-600 tabular-nums">
+                                                            +{rupiah(h.amount)}
+                                                        </span>
+                                                    )}
                                                 </li>
                                             ))}
                                         </ul>
@@ -330,6 +376,57 @@ export default function Receivables({ receivables }: { receivables: Receivable[]
                 </div>
                 <Field label={t('Catatan')} error={form.errors.note} htmlFor="rcv-note">
                     <Input id="rcv-note" value={form.data.note} onChange={(e) => form.setData('note', e.target.value)} placeholder={t('Opsional')} />
+                </Field>
+                {!editing && (
+                    <div className="grid gap-3 rounded-lg border p-3">
+                        <Field label={t('Dana diambil dari rekening (opsional)')} error={(form.errors as Record<string, string>).account_id}>
+                            <Select value={form.data.account_id || 'none'} onValueChange={(v) => form.setData('account_id', v === 'none' ? '' : v)}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">{t('Tidak, sudah tercatat / dana lama')}</SelectItem>
+                                    <AccountOptions accounts={finance?.accounts ?? []} />
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                        {form.data.account_id && (
+                            <Field label={t('Tanggal diberikan')} error={(form.errors as Record<string, string>).funded_date} htmlFor="rcv-funded">
+                                <Input
+                                    id="rcv-funded"
+                                    type="date"
+                                    value={form.data.funded_date}
+                                    onChange={(e) => form.setData('funded_date', e.target.value)}
+                                />
+                            </Field>
+                        )}
+                        <p className="text-muted-foreground text-xs">
+                            {t('Saldo rekening berkurang sebesar pokok, tapi tidak dihitung sebagai pengeluaran karena uangnya masih milikmu.')}
+                        </p>
+                    </div>
+                )}
+            </FormDialog>
+
+            <FormDialog
+                open={topupFor !== null}
+                onOpenChange={(o) => !o && setTopupFor(null)}
+                title={t('Tambah pokok :name', { name: topupFor?.counterparty ?? '' })}
+                description={t('Uang dari rekening ditambahkan ke dana di pihak lain. Bunga bulan berikutnya dihitung dari pokok yang baru.')}
+                processing={topup.processing}
+                onSubmit={() =>
+                    topupFor && topup.post(route('receivables.topup', topupFor.id), { preserveScroll: true, onSuccess: () => setTopupFor(null) })
+                }
+            >
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label={t('Nominal')} error={topup.errors.amount}>
+                        <MoneyInput value={topup.data.amount} onChange={(v) => topup.setData('amount', v)} autoFocus />
+                    </Field>
+                    <Field label={t('Tanggal')} error={topup.errors.date} htmlFor="topup-date">
+                        <Input id="topup-date" type="date" value={topup.data.date} onChange={(e) => topup.setData('date', e.target.value)} />
+                    </Field>
+                </div>
+                <Field label={t('Dari rekening')} error={topup.errors.account_id}>
+                    <AccountSelect value={topup.data.account_id} onChange={(v) => topup.setData('account_id', v)} />
                 </Field>
             </FormDialog>
 

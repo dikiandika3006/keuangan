@@ -42,5 +42,14 @@
     "Uang masuk terakhir": "Latest money received",
     "Sisa pokok :amount. Dicatat langsung sebagai uang masuk ke rekening yang dipilih.": "Remaining principal :amount. Recorded right away as money in to the chosen account.",
     "Seluruh nominal mengurangi sisa pokok. Bunga bulan berikutnya otomatis dihitung dari sisa pokok baru.": "The whole amount reduces the remaining principal. Next month's interest is calculated from the new remaining principal.",
-    "Bunga bulan tanggal terima dibayar dulu, sisanya mengurangi pokok.": "Interest for the month of the received date is paid first, the rest reduces the principal."
+    "Bunga bulan tanggal terima dibayar dulu, sisanya mengurangi pokok.": "Interest for the month of the received date is paid first, the rest reduces the principal.",
+    "Tambah pokok": "Add principal",
+    "Riwayat dana": "Fund history",
+    "Dana diberikan": "Funds given",
+    "Dana diambil dari rekening (opsional)": "Funds taken from account (optional)",
+    "Tidak, sudah tercatat / dana lama": "No, already recorded / old funds",
+    "Tanggal diberikan": "Date given",
+    "Saldo rekening berkurang sebesar pokok, tapi tidak dihitung sebagai pengeluaran karena uangnya masih milikmu.": "The account balance drops by the principal, but it isn't counted as an expense because the money is still yours.",
+    "Tambah pokok :name": "Add principal :name",
+    "Uang dari rekening ditambahkan ke dana di pihak lain. Bunga bulan berikutnya dihitung dari pokok yang baru.": "Money from the account is added to the funds held by the other party. Next month's interest uses the new principal."
 }

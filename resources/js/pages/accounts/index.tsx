@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { type Account, type AccountType } from '@/types/finance';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Archive, DatabaseBackup, Pencil, PiggyBank, Plus, Scale, ShieldCheck, Trash2, Wallet } from 'lucide-react';
+import { Archive, DatabaseBackup, Flag, Pencil, PiggyBank, Plus, Scale, ShieldCheck, Trash2, Wallet } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: t('Rekening'), href: '/accounts' }];
@@ -22,6 +22,7 @@ type FormData = {
     initial_balance: number | '';
     color: string;
     is_emergency_fund: boolean;
+    is_fire: boolean;
     is_archived: boolean;
     // Khusus Dompet Tujuan: isi rutin per bulan
     monthly_allocation: number | '';
@@ -40,6 +41,7 @@ export default function Accounts({ accounts, weeklyExpense }: { accounts: Accoun
         initial_balance: '',
         color: COLORS[0],
         is_emergency_fund: false,
+        is_fire: false,
         is_archived: false,
         ...EMPTY_ALLOCATION,
     });
@@ -57,6 +59,7 @@ export default function Accounts({ accounts, weeklyExpense }: { accounts: Accoun
                       initial_balance: a.initial_balance,
                       color: a.color,
                       is_emergency_fund: a.is_emergency_fund,
+                      is_fire: a.is_fire,
                       is_archived: a.is_archived,
                       monthly_allocation: a.allocation?.amount ?? '',
                       funding_account_id: a.allocation?.account_id ? String(a.allocation.account_id) : '',
@@ -68,6 +71,7 @@ export default function Accounts({ accounts, weeklyExpense }: { accounts: Accoun
                       initial_balance: '',
                       color: COLORS[accounts.length % COLORS.length],
                       is_emergency_fund: false,
+                      is_fire: false,
                       is_archived: false,
                       ...EMPTY_ALLOCATION,
                   },
@@ -204,6 +208,11 @@ export default function Accounts({ accounts, weeklyExpense }: { accounts: Accoun
                                                         {a.is_emergency_fund && (
                                                             <span className="flex items-center gap-0.5 text-emerald-600">
                                                                 · <ShieldCheck className="size-3" /> {t('Dana darurat')}
+                                                            </span>
+                                                        )}
+                                                        {a.is_fire && (
+                                                            <span className="flex items-center gap-0.5 text-amber-600 dark:text-amber-400">
+                                                                · <Flag className="size-3" /> {t('Rekening FIRE')}
                                                             </span>
                                                         )}
                                                         {a.is_archived && (
@@ -356,6 +365,17 @@ export default function Accounts({ accounts, weeklyExpense }: { accounts: Accoun
                         {t('Tandai sebagai')} <b>{t('dana darurat')}</b>
                         <span className="text-muted-foreground block text-xs">
                             {t('Jika tidak ada yang ditandai, semua saldo non-investasi dihitung sebagai dana darurat.')}
+                        </span>
+                    </span>
+                </label>
+                <label className={cn('flex items-start gap-2 text-sm', form.data.type === 'pocket' && 'hidden')}>
+                    <Checkbox checked={form.data.is_fire} onCheckedChange={(c) => form.setData('is_fire', c === true)} />
+                    <span>
+                        {t('Jadikan')} <b>{t('Rekening FIRE')}</b>
+                        <span className="text-muted-foreground block text-xs">
+                            {t(
+                                'Realisasi di Kalkulator FIRE diambil otomatis dari rekening ini. Isi lewat Transfer, bukan Pengeluaran. Sebaiknya bertipe Investasi supaya tidak dihitung sebagai uang siap pakai.',
+                            )}
                         </span>
                     </span>
                 </label>

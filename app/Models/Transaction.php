@@ -18,7 +18,7 @@ class Transaction extends Model
     protected $fillable = [
         'account_id', 'to_account_id', 'category_id', 'type', 'amount', 'date', 'note', 'source',
         'debt_installment_id', 'receivable_schedule_id', 'asset_id', 'recurring_item_id',
-        'attachment_path', 'attachment_name', 'attachment_mime', 'attachment_size', 'split_group', 'import_hash',
+        'attachment_path', 'attachment_name', 'attachment_mime', 'attachment_size', 'split_group', 'import_hash', 'receivable_id',
     ];
 
     // Lokasi file tidak dikirim ke browser; bukti dibuka lewat route yang mengecek pemilik

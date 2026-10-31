@@ -37,6 +37,7 @@ class AccountController extends Controller
         $data = $this->validated($request);
         $account = $request->user()->accounts()->create(Arr::except($data, self::ALLOCATION_FIELDS));
         $this->syncAllocation($account, $data);
+        $this->keepSingleFireAccount($account);
 
         return back()->with('success', $account->type === 'pocket' ? __('Dompet ditambahkan.') : __('Rekening ditambahkan.'));
     }
@@ -47,11 +48,20 @@ class AccountController extends Controller
         $data = $this->validated($request, $account);
         $account->update(Arr::except($data, self::ALLOCATION_FIELDS));
         $this->syncAllocation($account, $data);
+        $this->keepSingleFireAccount($account);
 
         return back()->with('success', __('Rekening diperbarui.'));
     }
 
     private const ALLOCATION_FIELDS = ['monthly_allocation', 'funding_account_id', 'allocation_day'];
+
+    /** Hanya satu Rekening FIRE: menandai rekening ini melepas tanda di rekening lain. */
+    private function keepSingleFireAccount(Account $account): void
+    {
+        if ($account->is_fire) {
+            $account->user->accounts()->whereKeyNot($account->id)->where('is_fire', true)->update(['is_fire' => false]);
+        }
+    }
 
     /** Dompet Tujuan: isi rutin bulanan disimpan sebagai item rutin bertipe transfer agar muncul di Biaya Bulanan & proyeksi. */
     private function syncAllocation(Account $account, array $data): void
@@ -118,6 +128,7 @@ class AccountController extends Controller
             'initial_balance' => ['required', 'integer'],
             'color' => ['required', 'string', 'max:20'],
             'is_emergency_fund' => ['boolean'],
+            'is_fire' => ['boolean'],
             'is_archived' => ['boolean'],
             'monthly_allocation' => ['nullable', 'integer', 'min:0'],
             'funding_account_id' => [

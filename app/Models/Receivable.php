@@ -7,6 +7,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 class Receivable extends Model
 {
@@ -37,6 +38,27 @@ class Receivable extends Model
         return $this->hasMany(ReceivableSchedule::class)->orderBy('period');
     }
 
+    /** Uang dari rekening ke piutang ini: dana awal yang diberikan & tambah pokok. */
+    public function outgoing(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * Tambah pokok per bulan ('Y-m' => total), dari transaksi kategori Tambah Pokok Piutang sampai tanggal tertentu.
+     *
+     * @return Collection<string, int>
+     */
+    public function topupsByMonth(?string $asOf = null): Collection
+    {
+        return $this->outgoing()
+            ->whereHas('category', fn ($q) => $q->where('system_key', 'receivable_topup'))
+            ->when($asOf, fn ($q) => $q->where('date', '<=', $asOf))
+            ->get(['date', 'amount'])
+            ->groupBy(fn (Transaction $t) => $t->date->format('Y-m'))
+            ->map(fn ($rows) => (int) $rows->sum('amount'));
+    }
+
     /** Pokok yang sudah dikembalikan, dari transaksi kategori Pokok Piutang. */
     public function principalReceived(): int
     {
@@ -48,7 +70,7 @@ class Receivable extends Model
 
     public function remainingPrincipal(): int
     {
-        return max(0, $this->principal - $this->principalReceived());
+        return max(0, $this->principal + (int) $this->topupsByMonth()->sum() - $this->principalReceived());
     }
 
     /** Tarikan pokok untuk bulan tertentu (RCV-05: bisa berubah mulai bulan tertentu). */
@@ -71,7 +93,9 @@ class Receivable extends Model
         $start = CarbonImmutable::parse($this->start_month)->startOfMonth();
         $thisMonth = CarbonImmutable::now()->startOfMonth();
         $end = $thisMonth->addMonth();
-        $remaining = $this->principal;
+        $topups = $this->topupsByMonth();
+        // Tambah pokok sebelum bulan mulai dianggap bagian dari pokok awal
+        $remaining = $this->principal + (int) $topups->filter(fn ($v, $m) => $m < $start->format('Y-m'))->sum();
 
         for ($period = $start; $period->lte($end); $period = $period->addMonth()) {
             $schedule = $this->schedules()->firstOrNew(['period' => $period->toDateString()]);
@@ -87,7 +111,8 @@ class Receivable extends Model
 
             // Bulan lalu pakai pokok yang benar-benar diterima; bulan berjalan/depan diasumsikan sesuai jadwal
             $remaining -= $period->lt($thisMonth) ? $received['principal'] : max($received['principal'], $schedule->principal_due);
-            $remaining = max(0, $remaining);
+            // Tambah pokok bulan ini mulai berbunga bulan berikutnya
+            $remaining = max(0, $remaining) + (int) ($topups[$period->format('Y-m')] ?? 0);
         }
 
         $this->schedules()->where('period', '>', $end->toDateString())->whereDoesntHave('transactions')->delete();

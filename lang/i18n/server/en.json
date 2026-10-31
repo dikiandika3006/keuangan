@@ -84,5 +84,6 @@
     "Realisasi FIRE dihapus.": "FIRE progress deleted.",
     "Bunga :interest + pokok :principal": "Interest :interest + principal :principal",
     "Bulan perubahan tarikan harus setelah bulan mulai.": "The withdrawal change month must be after the start month.",
-    "Bunga + pokok": "Interest + principal"
+    "Bunga + pokok": "Interest + principal",
+    "Pokok ditambah :amount.": "Principal increased by :amount."
 }

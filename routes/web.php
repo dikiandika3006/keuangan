@@ -67,6 +67,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('receivables', ReceivableController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::post('receivables/{receivable}/receive', [ReceivableController::class, 'receive'])->name('receivables.receive');
+    Route::post('receivables/{receivable}/topup', [ReceivableController::class, 'topup'])->name('receivables.topup');
 
     Route::resource('assets', AssetController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::post('assets/{asset}/valuate', [AssetController::class, 'valuate'])->name('assets.valuate');
@@ -96,6 +97,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('monthly/{recurringItem}/confirm-end', [MonthlyBillController::class, 'confirmEnd'])->name('monthly.confirm-end');
 
     Route::get('calculator/fire', [FireController::class, 'index'])->name('calculator.fire');
+    Route::put('calculator/fire/settings', [FireController::class, 'saveSettings'])->name('fire.settings');
     Route::post('calculator/fire/entries', [FireController::class, 'store'])->name('fire-entries.store');
     Route::delete('calculator/fire/entries/{fireEntry}', [FireController::class, 'destroy'])->name('fire-entries.destroy');
     Route::inertia('calculator/kpr', 'calculator/kpr')->name('calculator.kpr');

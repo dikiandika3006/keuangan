@@ -56,5 +56,8 @@
     "Cocok :date": "Reconciled :date",
     " · :n hari lalu": " · :n days ago",
     " · hari ini": " · today",
-    "Selisih|rekonsiliasi": "Difference"
+    "Selisih|rekonsiliasi": "Difference",
+    "Rekening FIRE": "FIRE account",
+    "Jadikan": "Use as",
+    "Realisasi di Kalkulator FIRE diambil otomatis dari rekening ini. Isi lewat Transfer, bukan Pengeluaran. Sebaiknya bertipe Investasi supaya tidak dihitung sebagai uang siap pakai.": "FIRE Calculator progress is taken from this account automatically. Fund it with a Transfer, not an Expense. Prefer the Investment type so it is not counted as spendable money."
 }

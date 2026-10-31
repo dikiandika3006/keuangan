@@ -225,7 +225,7 @@ class FinanceService
             $receivable = (int) $receivables->sum(function ($r) use ($principalTx, $asOf) {
                 $ids = $r->schedules->pluck('id');
 
-                return max(0, $r->principal - (int) $principalTx->whereIn('receivable_schedule_id', $ids)->filter(fn ($t) => $t->date->toDateString() <= $asOf)->sum('amount'));
+                return max(0, $r->principal + (int) $r->topupsByMonth($asOf)->sum() - (int) $principalTx->whereIn('receivable_schedule_id', $ids)->filter(fn ($t) => $t->date->toDateString() <= $asOf)->sum('amount'));
             });
             $debt = (int) $debts->sum(fn ($d) => $d->hasSchedule()
                 ? $d->installments->filter(fn ($x) => ! $x->paid_at || $x->paid_at->toDateString() > $asOf)->sum('amount')

@@ -80,7 +80,6 @@
     "Setoran bulan ini": "Deposit this month",
     "Saldo akhir bulan": "Month-end balance",
     "Belum ada realisasi": "No progress yet",
-    "Isi setoran dan saldo dana FIRE kamu tiap bulan untuk melihat progres dibanding rencana.": "Enter your FIRE fund deposit and balance every month to compare progress with the plan.",
     "Isi bulan ini": "Fill in this month",
     "Realisasi :month belum diisi.": "Progress for :month has not been entered.",
     ":n bulan belum diisi.": ":n months not entered yet.",
@@ -93,5 +92,12 @@
     "realisasi :month": "progress :month",
     "Belum diisi": "Not entered",
     "Isi": "Fill in",
-    "Variabel Realisasi": "Actual Inputs"
+    "Variabel Realisasi": "Actual Inputs",
+    "Tersimpan di akun": "Saved to account",
+    "Gagal menyimpan": "Couldn't save",
+    "Menyimpan…": "Saving…",
+    "Isi setoran dan saldo dana FIRE kamu tiap bulan, atau tandai satu rekening sebagai Rekening FIRE di halaman Rekening supaya terisi otomatis.": "Enter your FIRE fund deposit and balance every month, or mark one account as the FIRE account on the Accounts page to fill this in automatically.",
+    "Otomatis dari rekening": "Automatically from account",
+    "Setoran = transfer ke rekening ini. Perbarui nilainya lewat Cocokkan saldo supaya hasil invest tercatat.": "Deposits = transfers into this account. Update its value with Reconcile balance so investment returns are recorded.",
+    "Buka Rekening": "Open Accounts"
 }

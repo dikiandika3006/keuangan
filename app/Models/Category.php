@@ -16,6 +16,8 @@ class Category extends Model
         'unspecified_income' => ['Pemasukan Tidak Dirinci', 'income', '#94a3b8'],
         'receivable_interest' => ['Bunga Piutang', 'income', '#0ea5e9'],
         'receivable_principal' => ['Pokok Piutang', 'income', '#6366f1'],
+        'receivable_out' => ['Dana ke Piutang', 'expense', '#6366f1'],
+        'receivable_topup' => ['Tambah Pokok Piutang', 'expense', '#818cf8'],
         'debt_installment' => ['Cicilan / Utang', 'expense', '#dc2626'],
         'debt_interest' => ['Bunga Utang', 'expense', '#b91c1c'],
         'debt_principal' => ['Pokok Utang', 'expense', '#f87171'],
@@ -30,7 +32,7 @@ class Category extends Model
      * Kategori sistem untuk uang yang cuma pindah kantong (setor/cair aset, pokok piutang kembali, pokok utang dilunasi):
      * mengubah saldo rekening, tetapi bukan pemasukan/pengeluaran sehingga tidak ikut rekap & rasio.
      */
-    public const INTERNAL_MOVES = ['asset_deposit', 'asset_withdrawal', 'receivable_principal', 'debt_principal'];
+    public const INTERNAL_MOVES = ['asset_deposit', 'asset_withdrawal', 'receivable_principal', 'receivable_out', 'receivable_topup', 'debt_principal'];
 
     protected $fillable = ['name', 'type', 'color', 'icon', 'system_key'];
 

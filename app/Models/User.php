@@ -50,6 +50,7 @@ class User extends Authenticatable
             'google_drive_backup_at' => 'datetime',
             'reviewed_month' => 'date',
             'emergency_months' => 'integer',
+            'fire_settings' => 'array',
         ];
     }
 

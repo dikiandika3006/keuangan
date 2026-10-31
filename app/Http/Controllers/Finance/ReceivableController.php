@@ -30,18 +30,25 @@ class ReceivableController extends Controller
                 ...$r->toArray(),
                 'remaining' => $r->remainingPrincipal(),
                 // Riwayat uang masuk (bunga & tarikan pokok) terbaru
+                // Riwayat uang masuk (bunga & tarikan pokok) dan uang keluar (dana awal & tambah pokok)
                 'history' => Transaction::query()
-                    ->whereIn('receivable_schedule_id', $r->schedules()->select('id'))
+                    ->where(fn ($q) => $q->whereIn('receivable_schedule_id', $r->schedules()->select('id'))->orWhere('receivable_id', $r->id))
                     ->with(['account:id,name', 'category:id,system_key'])
-                    ->latest('date')->latest('id')->limit(8)
+                    ->latest('date')->latest('id')->limit(10)
                     ->get()
                     ->map(fn (Transaction $t) => [
                         'id' => $t->id,
                         'date' => $t->date->toDateString(),
                         'amount' => $t->amount,
-                        'kind' => $t->category?->system_key === 'receivable_interest' ? 'interest' : 'principal',
+                        'kind' => match ($t->category?->system_key) {
+                            'receivable_interest' => 'interest',
+                            'receivable_out' => 'out',
+                            'receivable_topup' => 'topup',
+                            default => 'principal',
+                        },
                         'account' => $t->account?->name,
                     ]),
+                'topped_up' => (int) $r->topupsByMonth()->sum(),
                 'schedules' => $r->schedules()->get()->map(function (ReceivableSchedule $s) {
                     $received = $s->received();
 
@@ -60,9 +67,57 @@ class ReceivableController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $request->user()->receivables()->create($this->validated($request))->syncSchedule();
+        $user = $request->user();
+        // Opsional: dana diambil dari rekening → saldo rekening berkurang, tanpa tercatat sebagai pengeluaran
+        $funding = $request->validate([
+            'account_id' => ['nullable', Rule::exists('accounts', 'id')->where('user_id', $user->id)->where(fn ($q) => $q->where('is_archived', false))],
+            'funded_date' => ['nullable', 'date', 'before_or_equal:today'],
+        ]);
+
+        DB::transaction(function () use ($request, $user, $funding) {
+            $receivable = $user->receivables()->create($this->validated($request));
+            if (! empty($funding['account_id'])) {
+                $user->transactions()->create([
+                    'type' => 'expense',
+                    'account_id' => $funding['account_id'],
+                    'category_id' => Category::system($user, 'receivable_out')->id,
+                    'amount' => $receivable->principal,
+                    'date' => $funding['funded_date'] ?? min(now()->toDateString(), $receivable->start_month->toDateString()),
+                    'note' => "Dana ke {$receivable->counterparty}",
+                    'receivable_id' => $receivable->id,
+                ]);
+            }
+            $receivable->syncSchedule();
+        });
 
         return back()->with('success', __('Piutang ditambahkan.'));
+    }
+
+    /** Tambah pokok: uang dari rekening ditambahkan ke dana di pihak lain; bunga bulan berikutnya ikut naik. */
+    public function topup(Request $request, Receivable $receivable): RedirectResponse
+    {
+        $this->ensureOwner($receivable);
+        $user = $request->user();
+        $data = $request->validate([
+            'account_id' => ['required', Rule::exists('accounts', 'id')->where('user_id', $user->id)->where(fn ($q) => $q->where('is_archived', false))],
+            'amount' => ['required', 'integer', 'min:1'],
+            'date' => ['required', 'date', 'before_or_equal:today'],
+        ]);
+
+        DB::transaction(function () use ($user, $receivable, $data) {
+            $user->transactions()->create([
+                'type' => 'expense',
+                'account_id' => $data['account_id'],
+                'category_id' => Category::system($user, 'receivable_topup')->id,
+                'amount' => $data['amount'],
+                'date' => $data['date'],
+                'note' => "Tambah pokok {$receivable->counterparty}",
+                'receivable_id' => $receivable->id,
+            ]);
+            $receivable->syncSchedule();
+        });
+
+        return back()->with('success', __('Pokok ditambah :amount.', ['amount' => 'Rp'.number_format($data['amount'], 0, ',', '.')]));
     }
 
     public function update(Request $request, Receivable $receivable): RedirectResponse

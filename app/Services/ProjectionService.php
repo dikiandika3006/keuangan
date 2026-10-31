@@ -258,7 +258,8 @@ class ProjectionService
         foreach ($receivables as $r) {
             $r->syncSchedule();
             $schedules = $r->schedules()->get()->keyBy(fn ($s) => $s->period->format('Y-m'));
-            $remaining = $r->principal;
+            $topups = $r->topupsByMonth();
+            $remaining = $r->principal + (int) $topups->filter(fn ($v, $m) => $m < CarbonImmutable::parse($r->start_month)->format('Y-m'))->sum();
 
             for ($period = CarbonImmutable::parse($r->start_month)->startOfMonth(); $period->lte($end); $period = $period->addMonth()) {
                 $key = $period->format('Y-m');
@@ -273,7 +274,7 @@ class ProjectionService
                 }
 
                 $received = $schedule && $period->lte($thisMonth) ? $schedule->received()['principal'] : 0;
-                $remaining = max(0, $remaining - ($period->lt($thisMonth) ? $received : max($received, $due)));
+                $remaining = max(0, $remaining - ($period->lt($thisMonth) ? $received : max($received, $due))) + (int) ($topups[$key] ?? 0);
             }
         }
 

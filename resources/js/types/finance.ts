@@ -9,6 +9,8 @@ export interface Account {
     balance: number;
     color: string;
     is_emergency_fund: boolean;
+    /** Sumber otomatis Realisasi Kalkulator FIRE */
+    is_fire: boolean;
     is_archived: boolean;
     last_reconciled_at: string | null;
     last_reconciled_balance: number | null;
@@ -115,7 +117,9 @@ export interface Receivable {
     remaining: number;
     schedules: ReceivableSchedule[];
     /** Uang masuk terbaru: bunga atau tarikan pokok */
-    history: { id: number; date: string; amount: number; kind: 'interest' | 'principal'; account: string | null }[];
+    history: { id: number; date: string; amount: number; kind: 'interest' | 'principal' | 'out' | 'topup'; account: string | null }[];
+    /** Total tambah pokok setelah bulan mulai */
+    topped_up: number;
 }
 
 export type AssetKind = 'investment' | 'jht' | 'business' | 'property' | 'other';
