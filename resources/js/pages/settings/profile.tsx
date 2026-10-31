@@ -39,11 +39,11 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
 
             <SettingsLayout>
                 <div className="space-y-6">
-                    <HeadingSmall title={t('Profil')} description={t('Nama dan email akun')} />
+                    <HeadingSmall title={t('Profil')} description={t('Username dan email untuk masuk ke aplikasi')} />
 
                     <form onSubmit={submit} className="space-y-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="name">{t('Nama')}</Label>
+                            <Label htmlFor="name">{t('Username')}</Label>
 
                             <Input
                                 id="name"
@@ -51,9 +51,14 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                                 value={data.name}
                                 onChange={(e) => setData('name', e.target.value)}
                                 required
-                                autoComplete="name"
-                                placeholder={t('Nama lengkap')}
+                                autoComplete="username"
+                                autoCapitalize="none"
+                                spellCheck={false}
+                                placeholder="dikiandika"
                             />
+                            <p className="text-muted-foreground text-xs">
+                                {t('Dipakai untuk masuk (selain email). Tanpa spasi; boleh huruf, angka, titik, garis bawah, dan strip.')}
+                            </p>
 
                             <InputError className="mt-2" message={errors.name} />
                         </div>
@@ -68,7 +73,7 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                                 value={data.email}
                                 onChange={(e) => setData('email', e.target.value)}
                                 required
-                                autoComplete="username"
+                                autoComplete="email"
                                 placeholder={t('Email')}
                             />
 

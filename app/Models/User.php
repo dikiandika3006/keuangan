@@ -54,6 +54,17 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Kolom name dipakai sebagai username login (lihat LoginRequest): tanpa spasi & tanpa "@"
+     * supaya tidak tertukar dengan email, dan unik.
+     *
+     * @return array<int, mixed>
+     */
+    public static function usernameRules(?int $ignoreId = null): array
+    {
+        return ['required', 'string', 'min:3', 'max:50', 'regex:/^[A-Za-z0-9._-]+$/', \Illuminate\Validation\Rule::unique('users', 'name')->ignore($ignoreId)];
+    }
+
     public const DEFAULT_CATEGORIES = [
         ['Gaji', 'income', '#10b981'],
         ['Bonus', 'income', '#22c55e'],

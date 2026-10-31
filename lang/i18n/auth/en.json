@@ -27,5 +27,8 @@
     "Tautan verifikasi baru sudah dikirim ke email yang kamu daftarkan.": "A new verification link has been sent to the email address you provided during registration.",
     "Kirim ulang email verifikasi": "Resend verification email",
     "Masuk|login": "Log in",
-    "Keluar|logout": "Log out"
+    "Keluar|logout": "Log out",
+    "Username": "Username",
+    "Username dan email untuk masuk ke aplikasi": "Username and email for logging in",
+    "Dipakai untuk masuk (selain email). Tanpa spasi; boleh huruf, angka, titik, garis bawah, dan strip.": "Used to log in (besides email). No spaces; letters, numbers, dots, underscores and dashes are allowed."
 }

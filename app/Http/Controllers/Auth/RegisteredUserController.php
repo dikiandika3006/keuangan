@@ -45,10 +45,10 @@ class RegisteredUserController extends Controller
         abort_unless(self::isOpen(), 404);
 
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => User::usernameRules(),
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+        ], [], ['name' => 'username']);
 
         $user = User::create([
             'name' => $request->name,

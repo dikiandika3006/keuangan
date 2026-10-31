@@ -38,18 +38,19 @@ export default function Register() {
             <form className="flex flex-col gap-6" onSubmit={submit}>
                 <div className="grid gap-6">
                     <div className="grid gap-2">
-                        <Label htmlFor="name">{t('Nama')}</Label>
+                        <Label htmlFor="name">{t('Username')}</Label>
                         <Input
                             id="name"
                             type="text"
                             required
                             autoFocus
                             tabIndex={1}
-                            autoComplete="name"
+                            autoComplete="username"
+                            autoCapitalize="none"
                             value={data.name}
                             onChange={(e) => setData('name', e.target.value)}
                             disabled={processing}
-                            placeholder={t('Nama lengkap')}
+                            placeholder="dikiandika"
                         />
                         <InputError message={errors.name} className="mt-2" />
                     </div>

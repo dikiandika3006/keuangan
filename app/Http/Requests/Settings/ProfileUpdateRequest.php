@@ -14,10 +14,16 @@ class ProfileUpdateRequest extends FormRequest
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
+    public function attributes(): array
+    {
+        return ['name' => 'username'];
+    }
+
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            // name = username untuk login
+            'name' => User::usernameRules($this->user()->id),
 
             'email' => [
                 'required',

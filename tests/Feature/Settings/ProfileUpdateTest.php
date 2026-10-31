@@ -28,7 +28,7 @@ class ProfileUpdateTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->patch('/settings/profile', [
-                'name' => 'Test User',
+                'name' => 'testuser',
                 'email' => 'test@example.com',
             ]);
 
@@ -38,7 +38,7 @@ class ProfileUpdateTest extends TestCase
 
         $user->refresh();
 
-        $this->assertSame('Test User', $user->name);
+        $this->assertSame('testuser', $user->name);
         $this->assertSame('test@example.com', $user->email);
         $this->assertNull($user->email_verified_at);
     }
@@ -50,7 +50,7 @@ class ProfileUpdateTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->patch('/settings/profile', [
-                'name' => 'Test User',
+                'name' => 'testuser',
                 'email' => $user->email,
             ]);
 
@@ -95,5 +95,20 @@ class ProfileUpdateTest extends TestCase
             ->assertRedirect('/settings/profile');
 
         $this->assertNotNull($user->fresh());
+    }
+
+    public function test_username_must_be_valid_and_unique_and_works_for_login()
+    {
+        User::factory()->create(['name' => 'sudahada']);
+        $user = User::factory()->create(['password' => 'rahasia-123']);
+
+        $this->actingAs($user)->patch('/settings/profile', ['name' => 'pakai spasi', 'email' => $user->email])->assertSessionHasErrors('name');
+        $this->actingAs($user)->patch('/settings/profile', ['name' => 'a@b', 'email' => $user->email])->assertSessionHasErrors('name');
+        $this->actingAs($user)->patch('/settings/profile', ['name' => 'sudahada', 'email' => $user->email])->assertSessionHasErrors('name');
+
+        $this->actingAs($user)->patch('/settings/profile', ['name' => 'diki.andika', 'email' => $user->email])->assertSessionHasNoErrors();
+        $this->post('/logout');
+        $this->post('/login', ['email' => 'diki.andika', 'password' => 'rahasia-123']);
+        $this->assertAuthenticatedAs($user->fresh());
     }
 }
