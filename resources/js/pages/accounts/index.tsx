@@ -368,8 +368,8 @@ export default function Accounts({ accounts, weeklyExpense }: { accounts: Accoun
                         </span>
                     </span>
                 </label>
-                <label className={cn('flex items-start gap-2 text-sm', form.data.type === 'pocket' && 'hidden')}>
-                    <Checkbox checked={form.data.is_fire} onCheckedChange={(c) => form.setData('is_fire', c === true)} />
+                <label className="flex items-start gap-2 text-sm">
+                    <Checkbox checked={form.data.is_fire}onCheckedChange={(c) => form.setData('is_fire', c === true)} />
                     <span>
                         {t('Jadikan')} <b>{t('Rekening FIRE')}</b>
                         <span className="text-muted-foreground block text-xs">
