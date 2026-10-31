@@ -176,3 +176,9 @@
         border: 0 !important;
     }
 }
+
+/* HP: halaman tidak boleh bisa digeser ke samping (tabel lebar sudah punya geser sendiri) */
+html,
+body {
+    overflow-x: clip;
+}

@@ -124,7 +124,7 @@ export function QuickEntry({
                     <div className="text-muted-foreground flex items-center gap-1 text-xs font-medium">
                         <Zap className="size-3.5" /> {t('Sering dicatat, ketuk untuk simpan hari ini')}
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
                         {frequent.map((f, i) => (
                             <button
                                 key={i}
@@ -132,7 +132,7 @@ export function QuickEntry({
                                 disabled={processing}
                                 onClick={() => save({ ...f, note: f.note ?? '', date: today() })}
                                 className={cn(
-                                    'rounded-full border px-3 py-1 text-xs active:scale-95',
+                                    'shrink-0 rounded-full border px-3 py-1.5 text-xs whitespace-nowrap active:scale-95',
                                     f.type === 'income' ? 'border-emerald-300 text-emerald-700 dark:text-emerald-400' : 'hover:bg-muted',
                                 )}
                             >
@@ -177,7 +177,8 @@ export function QuickEntry({
                 ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Empat isian dalam dua kolom sama lebar supaya kotaknya sejajar */}
+            <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0">
                 <Field label={t('Nominal')} error={errors.amount}>
                     <MoneyInput
                         value={amount}
@@ -188,7 +189,15 @@ export function QuickEntry({
                     />
                 </Field>
                 <Field label={t('Tanggal')} htmlFor="quick-date">
-                    <Input id="quick-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                    {/* Ikon kalender bawaan disembunyikan (memakan tempat di HP); ketuk kolom untuk membuka pemilih tanggal */}
+                    <Input
+                        id="quick-date"
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        onClick={(e) => e.currentTarget.showPicker?.()}
+                        className="min-w-0 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-date-and-time-value]:text-left"
+                    />
                 </Field>
                 <Field label={t('Kategori')} error={errors.category_id}>
                     <Select
@@ -198,7 +207,7 @@ export function QuickEntry({
                             setCategoryId(v);
                         }}
                     >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full min-w-0 [&>span]:truncate">
                             <SelectValue placeholder={t('Pilih kategori')} />
                         </SelectTrigger>
                         <SelectContent>
@@ -221,7 +230,7 @@ export function QuickEntry({
                             setAccountId(v);
                         }}
                     >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full min-w-0 [&>span]:truncate">
                             <SelectValue placeholder={t('Pilih rekening')} />
                         </SelectTrigger>
                         <SelectContent>
@@ -231,7 +240,7 @@ export function QuickEntry({
                 </Field>
             </div>
 
-            <div className="flex items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
                 <span className="text-muted-foreground flex items-center gap-1">
                     {source && (
                         <>

@@ -213,7 +213,8 @@ export function FormDialog({
 }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+            {/* HP: menempel di atas layar supaya keyboard tidak menutupi isian; layar besar: di tengah */}
+            <DialogContent className="top-3 max-h-[calc(100dvh-1.5rem)] w-[calc(100%-1.5rem)] translate-y-0 gap-3 overflow-x-hidden overflow-y-auto rounded-xl p-4 sm:top-[50%] sm:max-h-[90dvh] sm:w-full sm:max-w-lg sm:translate-y-[-50%] sm:gap-4 sm:p-6">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     {description && <DialogDescription>{description}</DialogDescription>}
@@ -226,11 +227,11 @@ export function FormDialog({
                     }}
                 >
                     {children}
-                    <DialogFooter className="gap-2">
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    <DialogFooter className="flex-row gap-2 sm:justify-end">
+                        <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={() => onOpenChange(false)}>
                             {t('Batal')}
                         </Button>
-                        <Button type="submit" disabled={processing}>
+                        <Button type="submit" className="flex-1 sm:flex-none" disabled={processing}>
                             {submitLabel}
                         </Button>
                     </DialogFooter>

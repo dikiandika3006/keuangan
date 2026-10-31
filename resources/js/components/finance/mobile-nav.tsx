@@ -4,14 +4,14 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Link, usePage } from '@inertiajs/react';
-import { ArrowLeftRight, LayoutGrid, LineChart, Menu, Plus } from 'lucide-react';
+import { ArrowLeftRight, CalendarDays, ChartPie, Menu, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 const items = [
-    { title: t('Kondisi'), url: '/dashboard', icon: LayoutGrid },
+    { title: t('Rekap Bulanan'), url: '/recap', icon: ChartPie },
     { title: t('Transaksi'), url: '/transactions', icon: ArrowLeftRight },
     null,
-    { title: t('Proyeksi'), url: '/projection', icon: LineChart },
+    { title: t('Kalender'), url: '/calendar', icon: CalendarDays },
 ];
 
 /** Navigasi bawah (HP) + tombol catat cepat; di layar besar tombol catat cepat melayang di pojok kanan bawah. */
@@ -42,7 +42,7 @@ export function MobileNav() {
                                 href={item.url}
                                 prefetch
                                 className={cn(
-                                    'flex flex-col items-center gap-1 text-[11px]',
+                                    'flex flex-col items-center gap-1 text-center text-[11px] leading-tight',
                                     url.startsWith(item.url) ? 'text-foreground font-medium' : 'text-muted-foreground',
                                 )}
                             >
