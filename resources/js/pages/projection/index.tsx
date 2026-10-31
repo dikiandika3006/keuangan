@@ -1,6 +1,7 @@
 import { FixedItemsEditor } from '@/components/finance/fixed-items-editor';
 import { MoneyInput } from '@/components/finance/money-input';
 import { MonthPicker } from '@/components/finance/month-picker';
+import { PercentInput } from '@/components/finance/percent-input';
 import { DeleteButton, EmptyState, Field, FormDialog, Page, PageHeader, Section, StatCard } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -490,14 +491,10 @@ export default function Projection({ scenarios, selectedId, projection, comparis
                                     if ('pct' in f) {
                                         return (
                                             <Field key={f.key} label={f.label} error={error} htmlFor={`a-${f.key}`}>
-                                                <Input
+                                                <PercentInput
                                                     id={`a-${f.key}`}
-                                                    inputMode="decimal"
-                                                    value={String(form.data.assumptions[f.key] ?? 0).replace('.', ',')}
-                                                    onChange={(e) => {
-                                                        const v = parseFloat(e.target.value.replace(',', '.'));
-                                                        setAssumption(f.key, Number.isFinite(v) ? v : 0);
-                                                    }}
+                                                    value={Number(form.data.assumptions[f.key] ?? 0)}
+                                                    onChange={(v) => setAssumption(f.key, v)}
                                                 />
                                             </Field>
                                         );

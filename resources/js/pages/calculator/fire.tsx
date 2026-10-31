@@ -16,6 +16,7 @@ import { Area, AreaChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine,
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: t('Kalkulator FIRE'), href: '/calculator/fire' }];
 const STORAGE_KEY = 'keuangan.calculator.fire';
+const STORAGE_KEY_ACTUAL = 'keuangan.calculator.fire.actual';
 const tooltipStyle = { backgroundColor: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 };
 const MILESTONES = [5, 10, 15, 20, 25, 30];
 const TAB_KEY = 'keuangan.calculator.fire.tab';
@@ -62,21 +63,28 @@ export default function FireCalculator({ entries }: { entries: FireEntry[] }) {
             return 'simulation';
         }
     });
-    const [a, setA] = useState<FireInput>(() => {
-        try {
-            return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') };
-        } catch {
-            return DEFAULTS;
-        }
+    // Simulasi dan Realisasi punya variabel sendiri-sendiri, tidak saling memengaruhi
+    const [inputs, setInputs] = useState<Record<Tab, FireInput>>(() => {
+        const load = (key: string) => {
+            try {
+                return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(key) ?? '{}') };
+            } catch {
+                return DEFAULTS;
+            }
+        };
+        return { simulation: load(STORAGE_KEY), actual: load(STORAGE_KEY_ACTUAL) };
     });
+    const a = inputs[tab];
+    const setA = (v: FireInput) => setInputs((prev) => ({ ...prev, [tab]: v }));
 
     useEffect(() => {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(a));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs.simulation));
+            localStorage.setItem(STORAGE_KEY_ACTUAL, JSON.stringify(inputs.actual));
         } catch {
             /* abaikan */
         }
-    }, [a]);
+    }, [inputs]);
 
     useEffect(() => {
         try {
@@ -86,7 +94,7 @@ export default function FireCalculator({ entries }: { entries: FireEntry[] }) {
         }
     }, [tab]);
 
-    const set = <K extends keyof FireInput>(k: K, v: FireInput[K]) => setA((prev) => ({ ...prev, [k]: v }));
+    const set = <K extends keyof FireInput>(k: K, v: FireInput[K]) => setA({ ...a, [k]: v });
     const r = useMemo(() => fire(a), [a]);
     const chartData = r.years.map((y) => ({ label: t('Th :n', { n: y.year }), deposited: y.deposited, interest: y.interest }));
     const fireDate = fireDateFrom(r.fireMonth);
@@ -124,7 +132,7 @@ export default function FireCalculator({ entries }: { entries: FireEntry[] }) {
 
                 <div className="grid gap-4 lg:grid-cols-3">
                     <Section
-                        title={t('Variabel')}
+                        title={tab === 'actual' ? t('Variabel Realisasi') : t('Variabel')}
                         action={
                             <Button size="sm" variant="ghost" onClick={() => setA(DEFAULTS)}>
                                 <RotateCcw className="size-4" /> {t('Reset')}
