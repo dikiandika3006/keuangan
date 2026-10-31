@@ -135,6 +135,11 @@ class User extends Authenticatable
         return $this->hasMany(Budget::class);
     }
 
+    public function fireEntries(): HasMany
+    {
+        return $this->hasMany(FireEntry::class);
+    }
+
     public function goals(): HasMany
     {
         return $this->hasMany(Goal::class);

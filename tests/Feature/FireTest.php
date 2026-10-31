@@ -11,35 +11,26 @@ class FireTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_actual_tab_splits_monthly_growth_into_saving_and_investment_return()
+    public function test_monthly_fire_progress_is_entered_manually_one_per_month()
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $bca = $user->accounts()->create(['name' => 'BCA', 'type' => 'bank', 'initial_balance' => 1_000_000, 'color' => '#000']);
-        $gaji = $user->categories()->create(['name' => 'Gaji', 'type' => 'income', 'color' => '#111']);
-        $makan = $user->categories()->create(['name' => 'Makan', 'type' => 'expense', 'color' => '#222']);
-        $user->transactions()->create([
-            'type' => 'income', 'account_id' => $bca->id, 'category_id' => $gaji->id, 'amount' => 500_000, 'date' => now()->subMonths(2)->toDateString(),
-        ]);
 
-        // Bulan ini: gaji 3 jt, makan 1 jt, setor 1 jt ke reksa dana yang nilainya lalu naik jadi 1,2 jt
-        $today = now()->toDateString();
-        $user->transactions()->create(['type' => 'income', 'account_id' => $bca->id, 'category_id' => $gaji->id, 'amount' => 3_000_000, 'date' => $today]);
-        $user->transactions()->create(['type' => 'expense', 'account_id' => $bca->id, 'category_id' => $makan->id, 'amount' => 1_000_000, 'date' => $today]);
-        $rd = $user->assets()->create(['name' => 'Reksa Dana', 'kind' => 'investment', 'color' => '#333']);
-        $this->post("/assets/{$rd->id}/move", ['direction' => 'deposit', 'account_id' => $bca->id, 'amount' => 1_000_000, 'date' => $today])
-            ->assertSessionHasNoErrors();
-        $rd->valuations()->create(['date' => $today, 'value' => 1_200_000]);
+        $this->post('/calculator/fire/entries', ['month' => '2026-10', 'deposit' => 5_000_000, 'balance' => 5_040_000])->assertSessionHasNoErrors();
+        // Bulan yang sama diisi ulang: menimpa, bukan menambah catatan
+        $this->post('/calculator/fire/entries', ['month' => '2026-10', 'deposit' => 5_000_000, 'balance' => 5_050_000])->assertSessionHasNoErrors();
+        $this->post('/calculator/fire/entries', ['month' => '2026-9', 'deposit' => 1, 'balance' => 1])->assertSessionHasErrors('month');
 
         $this->get('/calculator/fire')->assertInertia(fn (Assert $page) => $page
             ->component('calculator/fire')
-            ->missing('history')
-            ->loadDeferredProps(fn (Assert $reload) => $reload
-                ->has('history', 3)
-                ->where('history.0.change', 500_000)
-                ->where('history.2.net_worth', 3_700_000)
-                ->where('history.2.saving', 2_000_000)
-                ->where('history.2.investment_return', 200_000)
-                ->where('history.2.change', 2_200_000)));
+            ->has('entries', 1)
+            ->where('entries.0.balance', 5_050_000));
+        // Terpisah dari data keuangan
+        $this->assertSame(0, $user->transactions()->count());
+
+        $entry = $user->fireEntries()->first();
+        $this->actingAs(User::factory()->create())->delete("/calculator/fire/entries/{$entry->id}")->assertForbidden();
+        $this->actingAs($user)->delete("/calculator/fire/entries/{$entry->id}")->assertRedirect();
+        $this->assertSame(0, $user->fireEntries()->count());
     }
 }

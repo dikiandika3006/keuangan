@@ -93,7 +93,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('monthly/{recurringItem}/renew', [MonthlyBillController::class, 'renew'])->name('monthly.renew');
     Route::post('monthly/{recurringItem}/confirm-end', [MonthlyBillController::class, 'confirmEnd'])->name('monthly.confirm-end');
 
-    Route::get('calculator/fire', FireController::class)->name('calculator.fire');
+    Route::get('calculator/fire', [FireController::class, 'index'])->name('calculator.fire');
+    Route::post('calculator/fire/entries', [FireController::class, 'store'])->name('fire-entries.store');
+    Route::delete('calculator/fire/entries/{fireEntry}', [FireController::class, 'destroy'])->name('fire-entries.destroy');
     Route::inertia('calculator/kpr', 'calculator/kpr')->name('calculator.kpr');
 
     Route::get('plan', [PlanController::class, 'index'])->name('plan.index');

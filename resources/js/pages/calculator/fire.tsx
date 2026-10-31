@@ -1,15 +1,16 @@
 import { MoneyInput } from '@/components/finance/money-input';
+import { MonthPicker } from '@/components/finance/month-picker';
 import { PercentInput } from '@/components/finance/percent-input';
-import { Field, Page, PageHeader, Section, StatCard } from '@/components/finance/ui';
+import { DeleteButton, EmptyState, Field, FormDialog, Page, PageHeader, Section, StatCard } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { fire, type FireInput } from '@/lib/calculators';
-import { compact, rupiah } from '@/lib/format';
+import { compact, monthLabel, rupiah } from '@/lib/format';
 import { intlLocale, t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
-import { Deferred, Head } from '@inertiajs/react';
-import { Flag, PiggyBank, RotateCcw, Target, TrendingUp, Wallet } from 'lucide-react';
+import { Head, useForm } from '@inertiajs/react';
+import { Flag, Pencil, PiggyBank, Plus, RotateCcw, Target, Trash2, TrendingUp, Wallet } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -21,16 +22,13 @@ const TAB_KEY = 'keuangan.calculator.fire.tab';
 
 type Tab = 'simulation' | 'actual';
 
-interface HistoryMonth {
+/** Realisasi dana FIRE satu bulan, diisi manual (terpisah dari rekening & transaksi). */
+interface FireEntry {
+    id: number;
     month: string;
-    label: string;
-    net_worth: number;
-    /** Selisih kekayaan bersih dibanding akhir bulan sebelumnya */
-    change: number;
-    /** Pemasukan − pengeluaran pribadi di luar rekening investasi */
-    saving: number;
-    /** Hasil rekening investasi + kenaikan nilai aset investasi di luar setoran/pencairan */
-    investment_return: number;
+    deposit: number;
+    /** Saldo dana FIRE di akhir bulan */
+    balance: number;
 }
 
 const DEFAULTS: FireInput = {
@@ -56,7 +54,7 @@ function duration(months: number): string {
     return [y && t(':n tahun', { n: y }), m && t(':n bulan', { n: m })].filter(Boolean).join(' ') || t('Sekarang');
 }
 
-export default function FireCalculator({ history }: { history?: HistoryMonth[] }) {
+export default function FireCalculator({ entries }: { entries: FireEntry[] }) {
     const [tab, setTab] = useState<Tab>(() => {
         try {
             return localStorage.getItem(TAB_KEY) === 'actual' ? 'actual' : 'simulation';
@@ -162,9 +160,7 @@ export default function FireCalculator({ history }: { history?: HistoryMonth[] }
                     </Section>
 
                     {tab === 'actual' ? (
-                        <Deferred data="history" fallback={<div className="text-muted-foreground p-4 text-sm lg:col-span-2">{t('Memuat...')}</div>}>
-                            <Actual history={history ?? []} input={a} target={r.target} />
-                        </Deferred>
+                        <Actual entries={entries} input={a} target={r.target} />
                     ) : (
                         <div className="grid min-w-0 gap-4 lg:col-span-2">
                             <div className="grid grid-cols-2 gap-3">
@@ -272,39 +268,115 @@ export default function FireCalculator({ history }: { history?: HistoryMonth[] }
     );
 }
 
-/** Kekayaan bersih nyata per bulan dibanding rencana (simulasi yang dimulai dari saldo awal bulan pertama). */
-function Actual({ history, input, target }: { history: HistoryMonth[]; input: FireInput; target: number }) {
-    const growth = (input.rate / 100 / 12) * (1 - input.tax / 100);
-    let plan = history.length ? history[0].net_worth - history[0].change : 0;
-    const rows = history.map((h) => {
-        plan = (plan + input.monthlySaving) * (1 + growth);
-        return { ...h, plan };
-    });
+function addMonth(month: string, n: number): string {
+    const d = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1 + n, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
-    const last = rows[rows.length - 1];
-    if (!last) return null;
-    const progress = target > 0 ? (last.net_worth / target) * 100 : 0;
-    const eta = fire({ ...input, initial: Math.max(0, last.net_worth) }).fireMonth;
+/**
+ * Realisasi dana FIRE per bulan dari isian manual, dibanding rencana simulasi (mulai dari dana awal).
+ * Hasil invest = saldo − saldo bulan terisi sebelumnya − setoran bulan ini.
+ */
+function Actual({ entries, input, target }: { entries: FireEntry[]; input: FireInput; target: number }) {
+    const [open, setOpen] = useState(false);
+    const form = useForm<{ month: string; deposit: number | ''; balance: number | '' }>({ month: '', deposit: '', balance: '' });
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const byMonth = new Map(entries.map((e) => [e.month, e]));
+
+    const openFor = (month: string) => {
+        const e = byMonth.get(month);
+        form.clearErrors();
+        form.setData({ month, deposit: e?.deposit ?? input.monthlySaving, balance: e?.balance ?? '' });
+        setOpen(true);
+    };
+    const submit = () => form.post(route('fire-entries.store'), { preserveScroll: true, onSuccess: () => setOpen(false) });
+
+    const dialog = (
+        <FormDialog
+            open={open}
+            onOpenChange={setOpen}
+            title={t('Isi realisasi bulan')}
+            description={t('Dana FIRE ini terpisah dari rekening & transaksi di aplikasi.')}
+            onSubmit={submit}
+            processing={form.processing}
+        >
+            <Field label={t('Bulan')} error={form.errors.month}>
+                <MonthPicker value={form.data.month} onChange={(v) => form.setData('month', v)} clearable={false} />
+            </Field>
+            <Field label={t('Setoran bulan ini')} error={form.errors.deposit}>
+                <MoneyInput value={form.data.deposit} onChange={(v) => form.setData('deposit', v)} />
+            </Field>
+            <Field label={t('Saldo akhir bulan')} error={form.errors.balance}>
+                <MoneyInput value={form.data.balance} onChange={(v) => form.setData('balance', v)} />
+            </Field>
+        </FormDialog>
+    );
+
+    if (entries.length === 0) {
+        return (
+            <Section title={t('Realisasi')} className="lg:col-span-2">
+                <EmptyState
+                    icon={Wallet}
+                    title={t('Belum ada realisasi')}
+                    description={t('Isi setoran dan saldo dana FIRE kamu tiap bulan untuk melihat progres dibanding rencana.')}
+                    action={
+                        <Button onClick={() => openFor(thisMonth)}>
+                            <Plus className="size-4" /> {t('Isi bulan ini')}
+                        </Button>
+                    }
+                />
+                {dialog}
+            </Section>
+        );
+    }
+
+    const growth = (input.rate / 100 / 12) * (1 - input.tax / 100);
+    const lastMonth = entries[entries.length - 1].month > thisMonth ? entries[entries.length - 1].month : thisMonth;
+    let plan = input.initial;
+    let prev = input.initial;
+    const rows = [];
+    for (let m = entries[0].month; m <= lastMonth; m = addMonth(m, 1)) {
+        plan = (plan + input.monthlySaving) * (1 + growth);
+        const e = byMonth.get(m) ?? null;
+        const row = { month: m, label: monthLabel(m), entry: e, plan, change: e ? e.balance - prev : 0, gain: e ? e.balance - prev - e.deposit : 0 };
+        if (e) prev = e.balance;
+        rows.push(row);
+    }
+
+    const filled = rows.filter((m) => m.entry);
+    const last = filled[filled.length - 1];
+    const balance = last.entry!.balance;
+    const progress = target > 0 ? (balance / target) * 100 : 0;
+    const eta = fire({ ...input, initial: balance }).fireMonth;
     const etaDate = fireDateFrom(eta);
-    const avgChange = rows.reduce((s, m) => s + m.change, 0) / rows.length;
-    const totalReturn = rows.reduce((s, m) => s + m.investment_return, 0);
+    const totalDeposit = entries.reduce((s, e) => s + e.deposit, 0);
+    const totalGain = filled.reduce((s, m) => s + m.gain, 0);
+    const missing = rows.filter((m) => !m.entry).length;
     const signed = (v: number) => `${v >= 0 ? '+' : ''}${rupiah(v)}`;
     const toneClass = (v: number) => (v >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400');
+    const chartData = rows.map((m) => ({ label: m.label, plan: m.plan, balance: m.entry?.balance ?? null }));
 
     return (
         <>
             <div className="grid min-w-0 gap-4 lg:col-span-2">
+                {!byMonth.has(thisMonth) && (
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+                        <span>
+                            {t('Realisasi :month belum diisi.', { month: monthLabel(thisMonth, 'long') })}
+                            {missing > 1 && ` ${t(':n bulan belum diisi.', { n: missing })}`}
+                        </span>
+                        <Button size="sm" onClick={() => openFor(thisMonth)}>
+                            {t('Isi sekarang')}
+                        </Button>
+                    </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
-                    <StatCard
-                        label={t('Dana sekarang')}
-                        value={rupiah(last.net_worth)}
-                        sub={t('Kekayaan bersih :month', { month: last.label })}
-                        icon={Wallet}
-                    />
+                    <StatCard label={t('Dana sekarang')} value={rupiah(balance)} sub={monthLabel(last.month, 'long')} icon={Wallet} />
                     <StatCard
                         label={t('Progres target')}
                         value={target > 0 ? percent(Math.min(100, progress), 1) : '-'}
-                        sub={t('Kurang :amount', { amount: rupiah(Math.max(0, target - last.net_worth)) })}
+                        sub={t('Kurang :amount', { amount: rupiah(Math.max(0, target - balance)) })}
                         icon={Target}
                         tone={progress >= 100 ? 'positive' : 'default'}
                     />
@@ -316,68 +388,106 @@ function Actual({ history, input, target }: { history: HistoryMonth[]; input: Fi
                         tone={eta !== null ? 'positive' : 'negative'}
                     />
                     <StatCard
-                        label={t('Rata-rata kenaikan / bulan')}
-                        value={rupiah(avgChange)}
-                        sub={t('Rencana setoran :amount · hasil invest :return', {
-                            amount: rupiah(input.monthlySaving),
-                            return: signed(totalReturn),
-                        })}
+                        label={t('Total hasil invest')}
+                        value={signed(totalGain)}
+                        sub={t('Total setoran :amount', { amount: rupiah(totalDeposit) })}
                         icon={TrendingUp}
-                        tone={avgChange >= input.monthlySaving ? 'positive' : 'negative'}
+                        tone={totalGain >= 0 ? 'positive' : 'negative'}
                     />
                 </div>
 
                 <Section title={t('Realisasi vs Rencana')}>
                     <div className="h-72">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={rows} margin={{ left: -10, right: 4, top: 4 }}>
+                            <LineChart data={chartData} margin={{ left: -10, right: 4, top: 4 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                                 <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={24} />
                                 <YAxis tickFormatter={compact} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={56} />
                                 <Tooltip formatter={(v) => rupiah(Number(v))} contentStyle={tooltipStyle} />
                                 <Legend wrapperStyle={{ fontSize: 12 }} />
                                 <Line dataKey="plan" name={t('Rencana')} stroke="#8b5cf6" strokeDasharray="4 4" dot={false} />
-                                <Line dataKey="net_worth" name={t('Realisasi')} stroke="#10b981" strokeWidth={2} dot={{ r: 2 }} />
+                                <Line dataKey="balance" name={t('Realisasi')} stroke="#10b981" strokeWidth={2} dot={{ r: 2 }} connectNulls />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
                 </Section>
             </div>
 
-            <Section title={t('Progres per Bulan')} className="lg:col-span-3">
+            <Section
+                title={t('Progres per Bulan')}
+                className="lg:col-span-3"
+                action={
+                    <Button size="sm" variant="outline" onClick={() => openFor(byMonth.has(thisMonth) ? addMonth(lastMonth, 1) : thisMonth)}>
+                        <Plus className="size-4" /> {t('Isi realisasi')}
+                    </Button>
+                }
+            >
                 <div className="-mx-4 overflow-x-auto">
                     <table className="w-full min-w-[820px] text-sm tabular-nums">
                         <thead className="text-muted-foreground text-xs">
                             <tr className="border-b">
                                 <th className="px-4 py-2 text-left font-medium">{t('Bulan')}</th>
-                                <th className="px-2 py-2 text-right font-medium">{t('Saldo realisasi')}</th>
-                                <th className="px-2 py-2 text-right font-medium">{t('Tabungan')}</th>
+                                <th className="px-2 py-2 text-right font-medium">{t('Setoran')}</th>
                                 <th className="px-2 py-2 text-right font-medium">{t('Hasil invest')}</th>
+                                <th className="px-2 py-2 text-right font-medium">{t('Saldo')}</th>
                                 <th className="px-2 py-2 text-right font-medium">{t('Kenaikan')}</th>
                                 <th className="px-2 py-2 text-right font-medium">{t('Rencana')}</th>
                                 <th className="px-2 py-2 text-right font-medium">{t('Selisih')}</th>
-                                <th className="px-4 py-2 text-right font-medium">{t('Progres target')}</th>
+                                <th className="px-2 py-2 text-right font-medium">{t('Progres target')}</th>
+                                <th className="w-px px-4 py-2" />
                             </tr>
                         </thead>
                         <tbody>
-                            {[...rows].reverse().map((m) => (
-                                <tr key={m.month} className="border-b">
-                                    <td className="px-4 py-2">{m.label}</td>
-                                    <td className="px-2 py-2 text-right font-medium">{rupiah(m.net_worth)}</td>
-                                    <td className={cn('px-2 py-2 text-right', toneClass(m.saving))}>{signed(m.saving)}</td>
-                                    <td className={cn('px-2 py-2 text-right', toneClass(m.investment_return))}>{signed(m.investment_return)}</td>
-                                    <td className={cn('px-2 py-2 text-right font-medium', toneClass(m.change))}>{signed(m.change)}</td>
-                                    <td className="text-muted-foreground px-2 py-2 text-right">{rupiah(m.plan)}</td>
-                                    <td className={cn('px-2 py-2 text-right', toneClass(m.net_worth - m.plan))}>{signed(m.net_worth - m.plan)}</td>
-                                    <td className="px-4 py-2 text-right">
-                                        {target > 0 ? percent(Math.min(100, (m.net_worth / target) * 100), 1) : '-'}
-                                    </td>
-                                </tr>
-                            ))}
+                            {[...rows].reverse().map((m) =>
+                                m.entry ? (
+                                    <tr key={m.month} className="border-b">
+                                        <td className="px-4 py-2">{m.label}</td>
+                                        <td className="px-2 py-2 text-right">{rupiah(m.entry.deposit)}</td>
+                                        <td className={cn('px-2 py-2 text-right', toneClass(m.gain))}>{signed(m.gain)}</td>
+                                        <td className="px-2 py-2 text-right font-medium">{rupiah(m.entry.balance)}</td>
+                                        <td className={cn('px-2 py-2 text-right', toneClass(m.change))}>{signed(m.change)}</td>
+                                        <td className="text-muted-foreground px-2 py-2 text-right">{rupiah(m.plan)}</td>
+                                        <td className={cn('px-2 py-2 text-right', toneClass(m.entry.balance - m.plan))}>
+                                            {signed(m.entry.balance - m.plan)}
+                                        </td>
+                                        <td className="px-2 py-2 text-right">
+                                            {target > 0 ? percent(Math.min(100, (m.entry.balance / target) * 100), 1) : '-'}
+                                        </td>
+                                        <td className="px-4 py-1 whitespace-nowrap">
+                                            <Button size="icon" variant="ghost" className="size-8" onClick={() => openFor(m.month)}>
+                                                <Pencil className="size-4" />
+                                            </Button>
+                                            <DeleteButton
+                                                url={route('fire-entries.destroy', m.entry.id)}
+                                                label={t('realisasi :month', { month: m.label })}
+                                            >
+                                                <Button size="icon" variant="ghost" className="size-8">
+                                                    <Trash2 className="size-4" />
+                                                </Button>
+                                            </DeleteButton>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    <tr key={m.month} className="text-muted-foreground border-b">
+                                        <td className="px-4 py-2">{m.label}</td>
+                                        <td colSpan={4} className="px-2 py-2 text-center italic">
+                                            {t('Belum diisi')}
+                                        </td>
+                                        <td className="px-2 py-2 text-right">{rupiah(m.plan)}</td>
+                                        <td colSpan={2} />
+                                        <td className="px-4 py-1">
+                                            <Button size="sm" variant="outline" onClick={() => openFor(m.month)}>
+                                                {t('Isi')}
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ),
+                            )}
                         </tbody>
                     </table>
                 </div>
             </Section>
+            {dialog}
         </>
     );
 }
