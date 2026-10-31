@@ -96,6 +96,7 @@ export default function FireCalculator({ entries }: { entries: FireEntry[] }) {
 
     const set = <K extends keyof FireInput>(k: K, v: FireInput[K]) => setA({ ...a, [k]: v });
     const r = useMemo(() => fire(a), [a]);
+    const periodRows = r.years.filter((y) => MILESTONES.includes(y.year) || (r.fireMonth !== null && y.year === Math.ceil(r.fireMonth / 12)));
     const chartData = r.years.map((y) => ({ label: t('Th :n', { n: y.year }), deposited: y.deposited, interest: y.interest }));
     const fireDate = fireDateFrom(r.fireMonth);
 
@@ -232,7 +233,34 @@ export default function FireCalculator({ entries }: { entries: FireEntry[] }) {
 
                 {tab === 'simulation' && (
                     <Section title={t('Ringkasan per Periode')}>
-                        <div className="-mx-4 overflow-x-auto">
+                        {/* HP: kartu per periode supaya tidak perlu geser ke kanan */}
+                        <div className="-mx-4 divide-y md:hidden">
+                            {periodRows.map((y) => {
+                                const reached = r.target > 0 && y.balance >= r.target;
+                                return (
+                                    <div key={y.year} className={cn('px-4 py-3 text-sm tabular-nums', reached && 'bg-emerald-500/5')}>
+                                        <div className="flex items-baseline justify-between gap-2">
+                                            <span className="font-medium">{t(':n tahun', { n: y.year })}</span>
+                                            <span className="font-semibold">{rupiah(y.balance)}</span>
+                                        </div>
+                                        <div className="text-muted-foreground mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
+                                            <span>{t('Total tabungan')}</span>
+                                            <span className="text-right">{rupiah(y.deposited)}</span>
+                                            <span>{t('Bunga')}</span>
+                                            <span className="text-right">
+                                                {rupiah(y.interest)}
+                                                {y.deposited > 0 && ` (${percent((y.interest / y.deposited) * 100, 1)})`}
+                                            </span>
+                                            <span>{t('Progres target')}</span>
+                                            <span className="text-right">
+                                                {r.target > 0 ? `${Math.min(100, (y.balance / r.target) * 100).toFixed(0)}%` : '-'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="-mx-4 hidden overflow-x-auto md:block">
                             <table className="w-full min-w-[560px] text-sm tabular-nums">
                                 <thead className="text-muted-foreground text-xs">
                                     <tr className="border-b">
@@ -245,27 +273,23 @@ export default function FireCalculator({ entries }: { entries: FireEntry[] }) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {r.years
-                                        .filter(
-                                            (y) => MILESTONES.includes(y.year) || (r.fireMonth !== null && y.year === Math.ceil(r.fireMonth / 12)),
-                                        )
-                                        .map((y) => {
-                                            const reached = r.target > 0 && y.balance >= r.target;
-                                            return (
-                                                <tr key={y.year} className={reached ? 'border-b bg-emerald-500/5' : 'border-b'}>
-                                                    <td className="px-4 py-2">{t(':n tahun', { n: y.year })}</td>
-                                                    <td className="px-2 py-2 text-right">{rupiah(y.deposited)}</td>
-                                                    <td className="px-2 py-2 text-right">{rupiah(y.interest)}</td>
-                                                    <td className="px-2 py-2 text-right font-medium">{rupiah(y.balance)}</td>
-                                                    <td className="px-2 py-2 text-right">
-                                                        {y.deposited > 0 ? percent((y.interest / y.deposited) * 100, 1) : '-'}
-                                                    </td>
-                                                    <td className="px-4 py-2 text-right">
-                                                        {r.target > 0 ? `${Math.min(100, (y.balance / r.target) * 100).toFixed(0)}%` : '-'}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
+                                    {periodRows.map((y) => {
+                                        const reached = r.target > 0 && y.balance >= r.target;
+                                        return (
+                                            <tr key={y.year} className={reached ? 'border-b bg-emerald-500/5' : 'border-b'}>
+                                                <td className="px-4 py-2">{t(':n tahun', { n: y.year })}</td>
+                                                <td className="px-2 py-2 text-right">{rupiah(y.deposited)}</td>
+                                                <td className="px-2 py-2 text-right">{rupiah(y.interest)}</td>
+                                                <td className="px-2 py-2 text-right font-medium">{rupiah(y.balance)}</td>
+                                                <td className="px-2 py-2 text-right">
+                                                    {y.deposited > 0 ? percent((y.interest / y.deposited) * 100, 1) : '-'}
+                                                </td>
+                                                <td className="px-4 py-2 text-right">
+                                                    {r.target > 0 ? `${Math.min(100, (y.balance / r.target) * 100).toFixed(0)}%` : '-'}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -430,7 +454,68 @@ function Actual({ entries, input, target }: { entries: FireEntry[]; input: FireI
                     </Button>
                 }
             >
-                <div className="-mx-4 overflow-x-auto">
+                {/* HP: kartu per bulan supaya tidak perlu geser ke kanan */}
+                <div className="-mx-4 divide-y md:hidden">
+                    {[...rows].reverse().map((m) => (
+                        <div key={m.month} className="px-4 py-3 text-sm tabular-nums">
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="font-medium">{m.label}</span>
+                                {m.entry ? (
+                                    <span className="flex items-center">
+                                        <span className="mr-1 font-semibold">{rupiah(m.entry.balance)}</span>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="size-8"
+                                            onClick={() => openFor(m.month)}
+                                            aria-label={t('Ubah')}
+                                        >
+                                            <Pencil className="size-4" />
+                                        </Button>
+                                        <DeleteButton
+                                            url={route('fire-entries.destroy', m.entry.id)}
+                                            label={t('realisasi :month', { month: m.label })}
+                                        >
+                                            <Button size="icon" variant="ghost" className="size-8" aria-label={t('Hapus')}>
+                                                <Trash2 className="size-4" />
+                                            </Button>
+                                        </DeleteButton>
+                                    </span>
+                                ) : (
+                                    <Button size="sm" variant="outline" onClick={() => openFor(m.month)}>
+                                        {t('Isi')}
+                                    </Button>
+                                )}
+                            </div>
+                            {m.entry ? (
+                                <div className="text-muted-foreground mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
+                                    <span>{t('Setoran')}</span>
+                                    <span className="text-right">{rupiah(m.entry.deposit)}</span>
+                                    <span>{t('Hasil invest')}</span>
+                                    <span className={cn('text-right', toneClass(m.gain))}>{signed(m.gain)}</span>
+                                    <span>{t('Kenaikan')}</span>
+                                    <span className={cn('text-right', toneClass(m.change))}>{signed(m.change)}</span>
+                                    <span>{t('Rencana')}</span>
+                                    <span className="text-right">{rupiah(m.plan)}</span>
+                                    <span>{t('Selisih')}</span>
+                                    <span className={cn('text-right', toneClass(m.entry.balance - m.plan))}>{signed(m.entry.balance - m.plan)}</span>
+                                    <span>{t('Progres target')}</span>
+                                    <span className="text-right">
+                                        {target > 0 ? percent(Math.min(100, (m.entry.balance / target) * 100), 1) : '-'}
+                                    </span>
+                                </div>
+                            ) : (
+                                <div className="text-muted-foreground mt-1 flex justify-between text-xs">
+                                    <span className="italic">{t('Belum diisi')}</span>
+                                    <span>
+                                        {t('Rencana')} {rupiah(m.plan)}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+                <div className="-mx-4 hidden overflow-x-auto md:block">
                     <table className="w-full min-w-[820px] text-sm tabular-nums">
                         <thead className="text-muted-foreground text-xs">
                             <tr className="border-b">

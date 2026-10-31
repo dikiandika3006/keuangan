@@ -20,10 +20,12 @@ use App\Http\Controllers\Finance\SetupController;
 use App\Http\Controllers\Finance\TitipanController;
 use App\Http\Controllers\Finance\TransactionController;
 use App\Services\TaskRunner;
+use App\Support\HomePage;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => auth()->check() ? redirect()->route('dashboard') : redirect()->route('login'))->name('home');
+Route::get('/', fn (Request $request) => auth()->check() ? redirect(HomePage::url($request)) : redirect()->route('login'))->name('home');
 
 // Pemicu tugas berkala untuk cron eksternal (cron-job.org / cron Hostinger lewat URL); token diturunkan dari APP_KEY
 Route::get('cron/{token}', function (string $token) {

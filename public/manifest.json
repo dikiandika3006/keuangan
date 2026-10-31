@@ -3,7 +3,7 @@
     "short_name": "Keuanganku",
     "description": "Catatan dan rencana keuangan pribadi",
     "id": "/",
-    "start_url": "/dashboard",
+    "start_url": "/",
     "scope": "/",
     "display": "standalone",
     "orientation": "portrait",

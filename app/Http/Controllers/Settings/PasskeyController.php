@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\Passkey;
 use App\Services\WebAuthn;
 use App\Services\WebPush;
+use App\Support\HomePage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -103,7 +104,7 @@ class PasskeyController extends Controller
         RateLimiter::clear($key);
         ActivityLog::record('login', 'passkey: '.$passkey->name, $passkey, $passkey->user_id);
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(HomePage::url($request));
     }
 
     private static function deviceName(Request $request): string

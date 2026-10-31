@@ -45,7 +45,7 @@ export function StatCard({
             </div>
             <div
                 className={cn(
-                    'mt-1 truncate text-base font-semibold tabular-nums min-[400px]:text-lg sm:text-2xl',
+                    'mt-1 text-base font-semibold [overflow-wrap:anywhere] tabular-nums min-[400px]:text-lg sm:text-2xl',
                     tone === 'positive' && 'text-emerald-600 dark:text-emerald-400',
                     tone === 'negative' && 'text-red-600 dark:text-red-400',
                 )}
