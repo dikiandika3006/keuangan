@@ -1,4 +1,5 @@
 import { MoneyInput } from '@/components/finance/money-input';
+import { PageTabs } from '@/components/finance/page-tabs';
 import { PercentInput } from '@/components/finance/percent-input';
 import { Field, Page, PageHeader, Section, StatCard } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
@@ -129,6 +130,7 @@ export default function KprCalculator() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('Kalkulator KPR')} />
             <Page>
+                <PageTabs group="calculator" />
                 <PageHeader title={t('Kalkulator KPR')} description={t('Hitung cicilan anuitas, total bunga, dan simulasi pelunasan sebagian.')} />
 
                 <div className="grid gap-4 lg:grid-cols-3">

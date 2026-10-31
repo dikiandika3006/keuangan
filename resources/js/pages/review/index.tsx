@@ -1,4 +1,5 @@
 import { currentMonth } from '@/components/finance/fixed-items-editor';
+import { PageTabs } from '@/components/finance/page-tabs';
 import { EmptyState, Page, PageHeader, Section, StatCard } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
@@ -56,6 +57,7 @@ export default function ReviewPage({ review: r }: { review: Review }) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('Tinjauan :month', { month: r.label })} />
             <Page>
+                <PageTabs group="recap" />
                 <PageHeader
                     title={t('Tinjauan :month', { month: r.label })}
                     description={t('Ringkasan bulan, apa yang berubah, dan saran untuk bulan berikutnya.')}

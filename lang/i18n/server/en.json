@@ -85,5 +85,12 @@
     "Bunga :interest + pokok :principal": "Interest :interest + principal :principal",
     "Bulan perubahan tarikan harus setelah bulan mulai.": "The withdrawal change month must be after the start month.",
     "Bunga + pokok": "Interest + principal",
-    "Pokok ditambah :amount.": "Principal increased by :amount."
+    "Pokok ditambah :amount.": "Principal increased by :amount.",
+    "Gaji": "Salary",
+    "Usaha plastik": "Plastic business",
+    "Djitu": "Djitu",
+    "JHT": "JHT",
+    "Bunga + pokok piutang": "Receivable interest + principal",
+    "Realisasi :name dicatat.": ":name recorded as received.",
+    "Tautan realisasi dilepas.": "Realization link removed."
 }

@@ -1,3 +1,4 @@
+import { PageTabs } from '@/components/finance/page-tabs';
 import { EmptyState, Page, PageHeader, Section, StatCard, StatusBadge } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
@@ -81,6 +82,7 @@ export default function Calendar({ month, events }: { month: string; events: Cal
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('Kalender')} />
             <Page>
+                <PageTabs group="calendar" />
                 <PageHeader
                     title={t('Kalender Keuangan')}
                     description={t(

@@ -19,6 +19,8 @@ export interface NavItem {
     url: string;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    /** Alamat lain yang juga menandai menu ini aktif (halaman yang jadi tab di menu ini) */
+    match?: string[];
 }
 
 export interface SharedData {

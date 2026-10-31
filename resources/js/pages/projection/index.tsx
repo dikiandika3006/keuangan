@@ -1,6 +1,8 @@
 import { FixedItemsEditor } from '@/components/finance/fixed-items-editor';
+import { IncomeRealization, type RealizationLine, type UnlinkedIncome } from '@/components/finance/income-realization';
 import { MoneyInput } from '@/components/finance/money-input';
 import { MonthPicker } from '@/components/finance/month-picker';
+import { PageTabs } from '@/components/finance/page-tabs';
 import { PercentInput } from '@/components/finance/percent-input';
 import { DeleteButton, EmptyState, Field, FormDialog, Page, PageHeader, Section, StatCard } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
@@ -32,11 +34,14 @@ const tooltipStyle = { backgroundColor: 'var(--popover)', border: '1px solid var
 interface Props {
     scenarios: Scenario[];
     selectedId: number;
-    projection: { rows: ProjectionRow[]; summary: ProjectionSummary; sources: Record<DataSource, boolean> };
+    projection: { rows: ProjectionRow[]; summary: ProjectionSummary; sources: Record<DataSource, boolean>; realization: RealizationLine[] };
     comparison: { id: number; name: string; balances: Record<string, number> }[];
     defaults: Assumptions;
     employment: EmploymentStatus[];
     recurringItems: RecurringItem[];
+    accounts: { id: number; name: string }[];
+    incomeCategories: { id: number; name: string }[];
+    unlinkedIncomes: UnlinkedIncome[];
 }
 
 type MoneyKey = { [K in keyof Assumptions]: Assumptions[K] extends number ? K : never }[keyof Assumptions];
@@ -129,7 +134,18 @@ const COLUMNS: { key: keyof ProjectionRow; label: string; group: 'in' | 'out' }[
 
 type ScenarioForm = { name: string; start_month: string; months: number; assumptions: Assumptions };
 
-export default function Projection({ scenarios, selectedId, projection, comparison, defaults, employment, recurringItems }: Props) {
+export default function Projection({
+    scenarios,
+    selectedId,
+    projection,
+    comparison,
+    defaults,
+    employment,
+    recurringItems,
+    accounts,
+    incomeCategories,
+    unlinkedIncomes,
+}: Props) {
     const selected = scenarios.find((s) => s.id === selectedId) ?? scenarios[0];
     const { rows, summary, sources } = projection;
     const [editOpen, setEditOpen] = useState(false);
@@ -169,6 +185,7 @@ export default function Projection({ scenarios, selectedId, projection, comparis
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('Proyeksi Skenario')} />
             <Page>
+                <PageTabs group="projection" />
                 <PageHeader
                     title={t('Proyeksi Skenario')}
                     description={t(':n bulan mulai :month. Saldo awal = uang siap pakai hari ini; bulan yang sudah lewat memakai angka aktual.', {
@@ -265,6 +282,8 @@ export default function Projection({ scenarios, selectedId, projection, comparis
                         icon={Car}
                     />
                 </div>
+
+                <IncomeRealization lines={projection.realization} accounts={accounts} categories={incomeCategories} unlinked={unlinkedIncomes} />
 
                 <FixedItemsEditor items={recurringItems} />
 

@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\EmploymentStatus;
 use App\Models\Scenario;
 use App\Services\FinanceService;
 use App\Services\ProjectionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -40,7 +42,67 @@ class ProjectionController extends Controller
             'defaults' => ProjectionService::DEFAULTS,
             'recurringItems' => $user->recurringItems()->whereIn('type', ['income', 'expense'])->orderBy('type')->orderBy('id')->get(),
             'employment' => $user->employmentStatuses()->limit(10)->get(),
+            // Untuk dialog Realisasi pemasukan bulan berjalan
+            'accounts' => $user->accounts()->where('is_archived', false)->orderBy('name')->get(['id', 'name']),
+            'incomeCategories' => $user->categories()->where('type', 'income')->orderBy('name')->get(['id', 'name']),
+            'unlinkedIncomes' => $user->transactions()->where('type', 'income')
+                ->whereBetween('date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
+                ->whereNull('plan_key')->whereNull('recurring_item_id')->whereNull('receivable_schedule_id')
+                ->with('category:id,name')->orderByDesc('date')->get(['id', 'amount', 'date', 'note', 'category_id']),
         ]);
+    }
+
+    /**
+     * Realisasi satu baris pemasukan bulan berjalan: catat pemasukan baru, atau tautkan pemasukan yang sudah
+     * dicatat, supaya Proyeksi memakai angka aktualnya dan tidak menghitung rencananya lagi.
+     */
+    public function realize(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'key' => ['required', 'string', 'regex:/^(salary|plastic|djitu|jht|recurring:\d+)$/'],
+            'transaction_id' => ['nullable', Rule::exists('transactions', 'id')->where('user_id', $user->id)->where('type', 'income')],
+            'amount' => ['required_without:transaction_id', 'nullable', 'integer', 'min:1'],
+            'date' => ['required_without:transaction_id', 'nullable', 'date'],
+            'account_id' => ['required_without:transaction_id', 'nullable', Rule::exists('accounts', 'id')->where('user_id', $user->id)],
+            'category_id' => ['nullable', Rule::exists('categories', 'id')->where('user_id', $user->id)->where('type', 'income')],
+        ]);
+
+        $item = null;
+        if (str_starts_with($data['key'], 'recurring:')) {
+            $item = $user->recurringItems()->where('type', 'income')->findOrFail((int) substr($data['key'], 10));
+        }
+        $link = $item ? ['recurring_item_id' => $item->id] : ['plan_key' => $data['key']];
+        $label = $item?->name ?? __(ProjectionService::PLAN_INCOME[$data['key']]);
+
+        if (! empty($data['transaction_id'])) {
+            $user->transactions()->findOrFail($data['transaction_id'])->update($link);
+        } else {
+            $user->transactions()->create([
+                ...$link,
+                'type' => 'income',
+                'account_id' => $data['account_id'],
+                'category_id' => $data['category_id'] ?? $item?->category_id ?? Category::system($user, 'unspecified_income')->id,
+                'amount' => $data['amount'],
+                'date' => $data['date'],
+                'note' => $label,
+            ]);
+        }
+
+        return back()->with('success', __('Realisasi :name dicatat.', ['name' => $label]));
+    }
+
+    /** Lepas tautan realisasi bulan berjalan (transaksinya tetap ada sebagai pemasukan biasa). */
+    public function unrealize(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['key' => ['required', 'string', 'regex:/^(salary|plastic|djitu|jht|recurring:\d+)$/']]);
+        $query = $request->user()->transactions()->where('type', 'income')
+            ->whereBetween('date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()]);
+        str_starts_with($data['key'], 'recurring:')
+            ? $query->where('recurring_item_id', (int) substr($data['key'], 10))->update(['recurring_item_id' => null])
+            : $query->where('plan_key', $data['key'])->update(['plan_key' => null]);
+
+        return back()->with('success', __('Tautan realisasi dilepas.'));
     }
 
     public function store(Request $request): RedirectResponse

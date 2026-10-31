@@ -1,5 +1,6 @@
 import { MoneyInput } from '@/components/finance/money-input';
 import { MonthPicker } from '@/components/finance/month-picker';
+import { PageTabs } from '@/components/finance/page-tabs';
 import { PercentInput } from '@/components/finance/percent-input';
 import { DeleteButton, EmptyState, Field, FormDialog, Page, PageHeader, Section, StatCard } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
@@ -156,6 +157,7 @@ export default function FireCalculator({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('Kalkulator FIRE')} />
             <Page>
+                <PageTabs group="calculator" />
                 <PageHeader
                     title={t('Kalkulator FIRE')}
                     description={t('Berapa dana yang harus terkumpul supaya bebas finansial, dan berapa lama kamu bisa mencapainya.')}

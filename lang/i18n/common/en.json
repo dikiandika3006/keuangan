@@ -168,5 +168,18 @@
     "Tambah": "Add",
     "Keluar|logout": "Log out",
     "Masuk": "In",
-    "Keluar": "Out"
+    "Keluar": "Out",
+    "Harian": "Daily",
+    "Bulanan": "Monthly",
+    "Kekayaan": "Wealth",
+    "Rencana": "Planning",
+    "Utang & Piutang": "Debts & Receivables",
+    "Kalkulator": "Calculators",
+    "Rekap": "Recap",
+    "Tinjauan": "Review",
+    "Daftar tagihan": "Bill list",
+    "26 bulan": "26 months",
+    "Jangka panjang": "Long term",
+    "FIRE": "FIRE",
+    "KPR": "Mortgage"
 }

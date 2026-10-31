@@ -1,4 +1,5 @@
 import { currentMonth } from '@/components/finance/fixed-items-editor';
+import { PageTabs } from '@/components/finance/page-tabs';
 import { EmptyState, Page, PageHeader, ProgressBar, Section, StatCard } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
@@ -209,6 +210,7 @@ export default function Recap({ month, groups, moves, transactions, trend }: Pro
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('Rekap Bulanan')} />
             <Page>
+                <PageTabs group="recap" />
                 <PageHeader
                     title={t('Rekap Bulanan')}
                     description={t('Pemasukan dan pengeluaran per kategori dari data transaksi. Transfer antar rekening tidak dihitung.')}

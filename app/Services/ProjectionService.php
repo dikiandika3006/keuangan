@@ -97,6 +97,7 @@ class ProjectionService
         $friend = $sources['friend'] ? $this->receivableFlows($receivables, $start, $scenario->months) : null;
         $balance = $liquidNow;
         $rows = [];
+        $realization = [];
         // Pemasukan/pengeluaran tetap berlaku untuk semua skenario
         $recurring = $this->user->recurringItems()->get();
 
@@ -147,9 +148,13 @@ class ProjectionService
             } elseif ($m->eq($thisMonth)) {
                 // Bulan berjalan: aktual sampai hari ini + sisa rencana yang belum terjadi
                 $actual = $actuals[$key] ?? ['income' => 0, 'expense' => 0];
+                // Pemasukan dinilai per baris: yang sudah direalisasi memakai angka aktualnya (sudah ada di saldo),
+                // jadi rencananya tidak ditambahkan lagi; pemasukan tak terduga tidak mengurangi rencana lain
+                $realization = $this->incomeRealization($line, $m, $active, $sources['friend']);
+                $remainingIn = (int) collect($realization)->sum('remaining');
                 // Isi dompet bulan ini yang sudah ditransfer tidak termasuk 'expense' aktual
                 $plannedOut = $out - $line['pocket'];
-                $balance = $liquidNow + max(0, $in - $actual['income']) - max(0, $plannedOut - $actual['expense']) - max(0, $line['pocket'] - $pocketTransfers);
+                $balance = $liquidNow + $remainingIn - max(0, $plannedOut - $actual['expense']) - max(0, $line['pocket'] - $pocketTransfers);
             } else {
                 $balance += $in - $out;
             }
@@ -172,7 +177,12 @@ class ProjectionService
 
         $principalNow = $friend ? (int) $receivables->sum(fn (Receivable $r) => $r->remainingPrincipal()) : (int) $a['friend_principal'];
 
-        return ['rows' => $rows, 'summary' => $this->summary($rows, $a, $liquidNow, $principalNow), 'sources' => $sources];
+        return [
+            'rows' => $rows,
+            'summary' => $this->summary($rows, $a, $liquidNow, $principalNow),
+            'sources' => $sources,
+            'realization' => $realization,
+        ];
     }
 
     private function summary(array $rows, array $a, int $liquidNow, int $principalNow): array
@@ -298,6 +308,52 @@ class ProjectionService
     private function onOrAfter(string $month, ?string $from): bool
     {
         return $from !== null && $from !== '' && $month >= $from;
+    }
+
+    /** Baris pemasukan skenario yang bisa direalisasi lewat transaksi bertanda plan_key. */
+    public const PLAN_INCOME = ['salary' => 'Gaji', 'plastic' => 'Usaha plastik', 'djitu' => 'Djitu', 'jht' => 'JHT'];
+
+    /**
+     * Rencana vs realisasi tiap baris pemasukan bulan berjalan. Gaji, usaha & pemasukan tetap dianggap selesai
+     * begitu ada realisasinya, berapa pun nominalnya (rencana 10 jt, cair 11 jt → yang dipakai 11 jt);
+     * piutang dihitung sisa yang belum diterima.
+     *
+     * @return list<array{key: string, label: string, kind: string, planned: int, realized: int, remaining: int}>
+     */
+    private function incomeRealization(array $line, CarbonImmutable $month, Collection $active, bool $friendFromMenu): array
+    {
+        $tx = $this->user->transactions()->where('type', 'income')
+            ->whereBetween('date', [$month->toDateString(), $month->endOfMonth()->toDateString()])
+            ->get(['id', 'amount', 'category_id', 'plan_key', 'recurring_item_id', 'receivable_schedule_id']);
+        $lines = [];
+        $add = function (string $key, string $label, string $kind, int $planned, int $realized) use (&$lines) {
+            if ($planned > 0 || $realized > 0) {
+                $remaining = $kind === 'receivable' ? max(0, $planned - $realized) : ($realized > 0 ? 0 : $planned);
+                $lines[] = compact('key', 'label', 'kind', 'planned', 'realized', 'remaining');
+            }
+        };
+
+        foreach (self::PLAN_INCOME as $key => $label) {
+            $add($key, __($label), 'scenario', (int) $line[$key], (int) $tx->where('plan_key', $key)->sum('amount'));
+        }
+
+        // Pemasukan tetap: transaksi bertaut, atau bila tidak ada, pemasukan tanpa tautan berkategori sama
+        // (hanya bila kategori itu dipakai satu item saja, seperti di Kalender)
+        $incomes = $active->where('type', 'income');
+        $sharedCategory = $incomes->pluck('category_id')->filter()->countBy();
+        $loose = $tx->whereNull('plan_key')->whereNull('recurring_item_id')->whereNull('receivable_schedule_id');
+        foreach ($incomes as $item) {
+            $realized = (int) $tx->where('recurring_item_id', $item->id)->sum('amount');
+            if ($realized === 0 && $item->category_id && $sharedCategory[$item->category_id] === 1) {
+                $realized = (int) $loose->where('category_id', $item->category_id)->sum('amount');
+            }
+            $add("recurring:{$item->id}", $item->name, 'recurring', $item->amount, $realized);
+        }
+
+        $received = $friendFromMenu ? (int) $tx->whereNotNull('receivable_schedule_id')->sum('amount') : 0;
+        $add('receivable', __('Bunga + pokok piutang'), 'receivable', (int) $line['interest'] + (int) $line['withdraw'], $received);
+
+        return $lines;
     }
 
     /** Total transfer dari rekening biasa ke Dompet Tujuan di bulan tertentu (sampai hari ini). */

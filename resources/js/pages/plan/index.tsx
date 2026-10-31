@@ -1,4 +1,5 @@
 import { MoneyInput } from '@/components/finance/money-input';
+import { PageTabs } from '@/components/finance/page-tabs';
 import { PercentInput } from '@/components/finance/percent-input';
 import { DeleteButton, EmptyState, Field, FormDialog, Page, PageHeader, Section, StatCard } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
@@ -115,6 +116,7 @@ export default function Plan({ position, averages, recurringTotals, recurringIte
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('Rencana & Proyeksi')} />
             <Page>
+                <PageTabs group="projection" />
                 <PageHeader
                     title={t('Rencana & Proyeksi')}
                     description={t('Simulasi kondisi keuanganmu ke depan berdasarkan kebiasaan sekarang dan asumsi yang bisa kamu ubah.')}

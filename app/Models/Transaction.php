@@ -17,7 +17,7 @@ class Transaction extends Model
 
     protected $fillable = [
         'account_id', 'to_account_id', 'category_id', 'type', 'amount', 'date', 'note', 'source',
-        'debt_installment_id', 'receivable_schedule_id', 'asset_id', 'recurring_item_id',
+        'debt_installment_id', 'receivable_schedule_id', 'asset_id', 'recurring_item_id', 'plan_key',
         'attachment_path', 'attachment_name', 'attachment_mime', 'attachment_size', 'split_group', 'import_hash', 'receivable_id',
     ];
 

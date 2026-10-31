@@ -2,49 +2,62 @@ import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { t } from '@/lib/i18n';
-import { type NavItem } from '@/types';
+import { type NavGroup } from '@/types';
 import { Link } from '@inertiajs/react';
 import {
     ArrowLeftRight,
-    CalendarCheck,
+    Calculator,
     CalendarDays,
     ChartPie,
     CreditCard,
-    Flame,
     Gem,
-    HandCoins,
     Handshake,
-    House,
     LayoutGrid,
     LineChart,
     PiggyBank,
     Settings,
-    Sparkles,
     Target,
-    TrendingUp,
     Wallet,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
-export const mainNavItems: NavItem[] = [
-    { title: t('Kondisi Keuangan'), url: '/dashboard', icon: LayoutGrid },
-    { title: t('Transaksi'), url: '/transactions', icon: ArrowLeftRight },
-    { title: t('Rekap Bulanan'), url: '/recap', icon: ChartPie },
-    { title: t('Tinjauan Bulanan'), url: '/review', icon: Sparkles },
-    { title: t('Biaya Bulanan'), url: '/monthly', icon: CalendarCheck },
-    { title: t('Kalender'), url: '/calendar', icon: CalendarDays },
-    { title: t('Rekening'), url: '/accounts', icon: Wallet },
-    { title: t('Utang & Cicilan'), url: '/debts', icon: CreditCard },
-    { title: t('Piutang'), url: '/receivables', icon: HandCoins },
-    { title: t('Titipan'), url: '/titipan', icon: Handshake },
-    { title: t('Aset & Investasi'), url: '/assets', icon: Gem },
-    { title: t('Proyeksi Skenario'), url: '/projection', icon: LineChart },
-    { title: t('Anggaran'), url: '/budgets', icon: PiggyBank },
-    { title: t('Target'), url: '/goals', icon: Target },
-    { title: t('Simulasi Jangka Panjang'), url: '/plan', icon: TrendingUp },
-    { title: t('Kalkulator FIRE'), url: '/calculator/fire', icon: Flame },
-    { title: t('Kalkulator KPR'), url: '/calculator/kpr', icon: House },
-    { title: t('Pengaturan'), url: '/settings', icon: Settings },
+export const navGroups: NavGroup[] = [
+    {
+        title: t('Harian'),
+        items: [
+            { title: t('Kondisi Keuangan'), url: '/dashboard', icon: LayoutGrid },
+            { title: t('Transaksi'), url: '/transactions', icon: ArrowLeftRight },
+            { title: t('Kalender'), url: '/calendar', icon: CalendarDays, match: ['/monthly'] },
+        ],
+    },
+    {
+        title: t('Bulanan'),
+        items: [
+            { title: t('Rekap Bulanan'), url: '/recap', icon: ChartPie, match: ['/review'] },
+            { title: t('Anggaran'), url: '/budgets', icon: PiggyBank },
+        ],
+    },
+    {
+        title: t('Kekayaan'),
+        items: [
+            { title: t('Rekening'), url: '/accounts', icon: Wallet },
+            { title: t('Aset & Investasi'), url: '/assets', icon: Gem },
+            { title: t('Utang & Piutang'), url: '/debts', icon: CreditCard, match: ['/receivables'] },
+            { title: t('Titipan'), url: '/titipan', icon: Handshake },
+        ],
+    },
+    {
+        title: t('Rencana'),
+        items: [
+            { title: t('Proyeksi'), url: '/projection', icon: LineChart, match: ['/plan'] },
+            { title: t('Target'), url: '/goals', icon: Target },
+            { title: t('Kalkulator'), url: '/calculator/fire', icon: Calculator, match: ['/calculator'] },
+        ],
+    },
+    {
+        title: t('Lainnya'),
+        items: [{ title: t('Pengaturan'), url: '/settings', icon: Settings }],
+    },
 ];
 
 export function AppSidebar() {
@@ -63,7 +76,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain groups={navGroups} />
             </SidebarContent>
 
             <SidebarFooter>

@@ -74,6 +74,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('assets/{asset}/move', [AssetController::class, 'move'])->name('assets.move');
 
     Route::get('projection', [ProjectionController::class, 'index'])->name('projection.index');
+    Route::post('projection/realize', [ProjectionController::class, 'realize'])->name('projection.realize');
+    Route::post('projection/unrealize', [ProjectionController::class, 'unrealize'])->name('projection.unrealize');
     Route::post('scenarios', [ProjectionController::class, 'store'])->name('scenarios.store');
     Route::put('scenarios/{scenario}', [ProjectionController::class, 'update'])->name('scenarios.update');
     Route::post('scenarios/{scenario}/activate', [ProjectionController::class, 'activate'])->name('scenarios.activate');

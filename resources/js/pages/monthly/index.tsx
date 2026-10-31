@@ -1,6 +1,7 @@
 import { AccountOptions } from '@/components/finance/account-select';
 import { currentMonth, FixedItemsEditor } from '@/components/finance/fixed-items-editor';
 import { MoneyInput } from '@/components/finance/money-input';
+import { PageTabs } from '@/components/finance/page-tabs';
 import { EmptyState, Field, FormDialog, Page, PageHeader, ProgressBar, Section, StatCard } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -108,6 +109,7 @@ export default function MonthlyBills({ month, bills, scenario, scenarioLines, it
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('Biaya Bulanan')} />
             <Page>
+                <PageTabs group="calendar" />
                 <PageHeader
                     title={t('Biaya Bulanan')}
                     description={t('Semua biaya tetap muncul tiap bulan: budget, yang sudah dibayar, dan sisanya.')}

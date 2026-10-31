@@ -1,6 +1,7 @@
 import { AccountSelect, useDefaultAccountId } from '@/components/finance/account-select';
 import { MoneyInput } from '@/components/finance/money-input';
 import { MonthPicker } from '@/components/finance/month-picker';
+import { PageTabs } from '@/components/finance/page-tabs';
 import { DeleteButton, EmptyState, Field, FormDialog, Page, PageHeader, ProgressBar, StatCard, StatusBadge } from '@/components/finance/ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,6 +130,7 @@ export default function Debts({ debts }: { debts: Debt[] }) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('Utang & Cicilan')} />
             <Page>
+                <PageTabs group="loans" />
                 <PageHeader
                     title={t('Utang & Cicilan')}
                     description={t(
