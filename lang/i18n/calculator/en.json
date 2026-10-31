@@ -65,5 +65,20 @@
     "Tahun": "Year",
     "Bunga %": "Rate %",
     "Angsuran": "Installment",
-    "Pelunasan": "Prepayment"
+    "Pelunasan": "Prepayment",
+    "Simulasi": "Simulation",
+    "Realisasi": "Actual",
+    "Memuat...": "Loading...",
+    "Dana sekarang": "Current funds",
+    "Kekayaan bersih :month": "Net worth :month",
+    "Kurang :amount": ":amount to go",
+    "Estimasi FIRE dari posisi sekarang": "FIRE estimate from current position",
+    "Rata-rata kenaikan / bulan": "Average growth / month",
+    "Realisasi vs Rencana": "Actual vs Plan",
+    "Rencana": "Plan",
+    "Progres per Bulan": "Monthly Progress",
+    "Saldo realisasi": "Actual balance",
+    "Rencana setoran :amount · hasil invest :return": "Planned deposit :amount · investment return :return",
+    "Tabungan": "Savings",
+    "Hasil invest": "Investment return"
 }
